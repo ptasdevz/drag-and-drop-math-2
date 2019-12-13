@@ -1,5 +1,6 @@
-package com.ptasdevz.draganddropmath;
+package com.ptasdevz.draganddropmath2;
 
+import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.Context;
@@ -16,10 +17,12 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import static com.ptasdevz.draganddropmath.MainActivity.TAG;
-import static com.ptasdevz.draganddropmath.MainActivity.getMathEleList;
-import static com.ptasdevz.draganddropmath.MainActivity.getOppositeElePos;
-import static com.ptasdevz.draganddropmath.MainActivity.getUniqueId;
+import static com.ptasdevz.draganddropmath2.MainActivity.TAG;
+import static com.ptasdevz.draganddropmath2.MainActivity.getMathEleList;
+import static com.ptasdevz.draganddropmath2.MainActivity.getOppositeElePos;
+import static com.ptasdevz.draganddropmath2.MainActivity.getUniqueId;
+import static com.ptasdevz.draganddropmath2.MainActivity.mathElePosList;
+
 
 public class MathElement {
 
@@ -76,6 +79,7 @@ public class MathElement {
     }
 
 
+    @SuppressLint("ClickableViewAccessibility")
     public MathElement(final Context context, Drawable eleImgDrawable, float elePosX, float elePosY,
                        float srcImgWidth, float srcImgHeight, String eleName, int parentId, ConstraintLayout layout) {
 
@@ -85,14 +89,13 @@ public class MathElement {
         eleImg.setMaxWidth((int) srcImgWidth);
         String tag = eleName + "_COPY_" + parentId + "_" + getUniqueId();
         eleImg.setTag(tag);
+        final MathElePos mathElePos = new MathElePos();
+        mathElePosList.put(tag, mathElePos);
+        mathElePos.name = tag;
         if (eleName.equalsIgnoreCase(TRASH)){
-            eleImg.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View view) {
-                    setUpDragOptions(view);
-                    MathElement.draggedElement = MathElement.this;
-                    return true;
-                }
+            eleImg.setOnLongClickListener(view -> {
+                MathElement.draggedElement = MathElement.this;
+                return true;
             });
             eleImg.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -146,23 +149,24 @@ public class MathElement {
                 }
             });
         }else {
-            eleImg.setOnTouchListener(new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View view, MotionEvent motionEvent) {
-                    switch (motionEvent.getAction()) {
-                        case MotionEvent.ACTION_DOWN: {
-                            setUpDragOptions(view);
-                            MathElement.draggedElement = MathElement.this;
-                        }
-                        break;
-                        case MotionEvent.ACTION_UP: {
-                            view.performClick();
-                            Log.d(TAG, "touch is released.");
-                        }
-                        break;
+            eleImg.setOnTouchListener((view, motionEvent) -> {
+                switch (motionEvent.getAction()) {
+                    case MotionEvent.ACTION_DOWN: {
+                        MainActivity.setupActionDownOptions(mathElePos,view,motionEvent);
+                        MathElement.draggedElement = MathElement.this;
                     }
-                    return true;
+                    break;
+                    case MotionEvent.ACTION_MOVE:{
+                        MainActivity.setupActionMoveOptions(mathElePos, view, motionEvent);
+                    }
+                    break;
+                    case MotionEvent.ACTION_UP: {
+                        view.performClick();
+                        Log.d(TAG, "touch is released.");
+                    }
+                    break;
                 }
+                return true;
             });
         }
 
@@ -206,7 +210,7 @@ public class MathElement {
         if (index1>=0) this.focusedMathEleList.removeAt(index1);
 
         //Add each element as a focus element of each other in opposite positions
-        focusedMathEleList.put(MainActivity.getOppositeElePos(pos),this);
+        focusedMathEleList.put(getOppositeElePos(pos),this);
         this.focusedMathEleList.put(pos,focusElement);
 
         twoStepCheck(focusElement,pos);
@@ -282,15 +286,15 @@ public class MathElement {
 
         Log.d(TAG, "Element is being setup");
 
-        ClipData.Item item = new ClipData.Item((CharSequence) view.getTag());
+//        ClipData.Item item = new ClipData.Item((CharSequence) view.getTag());
 
-        ClipData clipData = new ClipData((CharSequence) view.getTag()
-                , new String[]{ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
+//        ClipData clipData = new ClipData((CharSequence) view.getTag()
+//                , new String[]{ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
 
         View.DragShadowBuilder dragShadowBuilder = new View.DragShadowBuilder(view);
 
         //start drag
-        view.startDragAndDrop(clipData, dragShadowBuilder, null, 0);
+//        view.startDragAndDrop(clipData, dragShadowBuilder, null, 0);
     }
 
     public ElementPos getLastPos() {

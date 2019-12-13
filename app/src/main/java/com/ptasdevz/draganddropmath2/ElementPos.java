@@ -1,4 +1,4 @@
-package com.ptasdevz.draganddropmath;
+package com.ptasdevz.draganddropmath2;
 
 public class ElementPos {
     private float left;
