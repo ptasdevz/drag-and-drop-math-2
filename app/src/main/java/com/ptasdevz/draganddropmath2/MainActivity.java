@@ -10,12 +10,15 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.DragEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
@@ -93,9 +96,11 @@ public class MainActivity extends AppCompatActivity {
                             int viewXConverted = x - workspaceX;
                             int viewYConverted = y - workspaceY;
 
-                            mathElePos.viewPosX = viewXConverted;
-                            mathElePos.viewPosY =viewYConverted;
-                            dropImageView(workspace,mathElePos);
+                            mathElePos.viewPosX = viewXConverted + view.getWidth()/2;
+                            mathElePos.viewPosY =viewYConverted + view.getHeight()/2;
+                            String lastDraggedEle = dropImageView(workspace, mathElePos);
+                            MathElement mathElement = mathEleList.get(lastDraggedEle);
+                            repositionElement(mathElement);
                             Log.d(TAG, "on action up : in workspace view");
                         } else {
                             Log.d(TAG, "on action up : not in workspace view");
@@ -128,6 +133,249 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             });
         }
+    }
+
+    public void repositionElement(MathElement mathElement) {
+
+        ImageView eleImg = mathElement.getEleImg();
+        MathElement focusedEle = getStationaryMathElement(mathElement);
+
+
+        if (focusedEle != null) {
+            Rect stationaryRect = new Rect();
+            focusedEle.getEleImg().getHitRect(stationaryRect);
+//            stationaryRect.top = focusedEle.getEleImg().getTop();
+//            stationaryRect.left = focusedEle.getEleImg().getLeft();
+//            stationaryRect.bottom = focusedEle.getEleImg().getBottom();
+//            stationaryRect.right = focusedEle.getEleImg().getRight();
+
+            Rect dropRect = new Rect();
+            eleImg.getHitRect(dropRect);
+//            dropRect.top = eleImg.getTop();
+//            dropRect.left = eleImg.getLeft();
+//            dropRect.bottom = eleImg.getBottom();
+//            dropRect.right = eleImg.getRight();
+
+            if (dropRect.intersect(stationaryRect)) {
+
+                //Toast.makeText(this, "Images are intersecting", Toast.LENGTH_SHORT).show();
+
+                //remove element focused element is trash can
+                String focusedElementName = focusedEle.getEleImg().getTag().toString();
+                String mathElementName = mathElement.getEleImg().getTag().toString();
+                Log.d(TAG, "focused element " + focusedElementName);
+
+                if (focusedElementName.contains(MathElement.TRASH)) {
+                    removeMathElement(mathElement);
+//                    mathElement.getEleImgLayout().removeView(mathElement.getEleImg());
+//                    this.mathEleList.remove(mathElement.getEleImg().getTag());
+                } else if (mathElementName.contains(MathElement.TRASH)) {
+                    removeMathElement(focusedEle);
+//                    focusedEle.getEleImgLayout().removeView(focusedEle.getEleImg());
+//                    this.mathEleList.remove(focusedEle.getEleImg().getTag());
+
+                } else {
+
+                    int y1 = dropRect.bottom - dropRect.top;
+                    int x1 = dropRect.right - dropRect.left;
+                    if (dropRect.left == stationaryRect.left && dropRect.top == stationaryRect.top && dropRect.right == stationaryRect.right && dropRect.bottom == stationaryRect.bottom) {
+                        //Toast.makeText(this, "cannot place image", Toast.LENGTH_SHORT).show();
+                    } else if (dropRect.left == stationaryRect.left && dropRect.top == stationaryRect.top) {
+                        //Toast.makeText(this, "left -top of stationaryRect is being intersected", Toast.LENGTH_SHORT).show();
+                        if (y1 > x1) {
+                            //Toast.makeText(this, "place image on left", Toast.LENGTH_SHORT).show();
+                            placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, Constant.LEFT);
+                        } else {
+                            //Toast.makeText(this, "place image on top", Toast.LENGTH_SHORT).show();
+                            placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, Constant.TOP);
+                        }
+                    } else if (dropRect.left == stationaryRect.left && dropRect.bottom == stationaryRect.bottom) {
+                        //Toast.makeText(this, "left-bottom of stationaryRect is being intersected", Toast.LENGTH_SHORT).show();
+                        if (y1 > x1) {
+                            //Toast.makeText(this, "place image on left", Toast.LENGTH_SHORT).show();
+                            placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, Constant.LEFT);
+                        } else {
+                            //Toast.makeText(this, "place image on bottom", Toast.LENGTH_SHORT).show();
+                            placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, Constant.BOTTOM);
+                        }
+                    } else if (dropRect.right == stationaryRect.right && dropRect.top == stationaryRect.top) {
+                        //Toast.makeText(this, "right-top of stationaryRect is being intersected", Toast.LENGTH_SHORT).show();
+                        if (y1 > x1) {
+                            //Toast.makeText(this, "place image on right", Toast.LENGTH_SHORT).show();
+                            placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, Constant.RIGHT);
+
+                        } else {
+                            //Toast.makeText(this, "place image on top", Toast.LENGTH_SHORT).show();
+                            placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, Constant.TOP);
+                        }
+                    } else if (dropRect.right == stationaryRect.right && dropRect.bottom == stationaryRect.bottom) {
+                        //Toast.makeText(this, "right-bottom of stationaryRect is being intersected", Toast.LENGTH_SHORT).show();
+                        if (y1 > x1) {
+                            //Toast.makeText(this, "place image on right", Toast.LENGTH_SHORT).show();
+                            placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, Constant.RIGHT);
+                        } else {
+                            //Toast.makeText(this, "place image on bottom", Toast.LENGTH_SHORT).show();
+                            placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, Constant.BOTTOM);
+                        }
+                    } else {
+                        //Toast.makeText(this, "default:  place image where possible", Toast.LENGTH_SHORT).show();
+                        placeElement(mathElement, eleImg, focusedEle, stationaryRect);
+
+                    }
+                }
+
+            } else {
+
+                //Toast.makeText(this, "Images are not intersecting", Toast.LENGTH_SHORT).show();
+            }
+            //Toast.makeText(this, imgV1.getHeight() + " onWindowFocusChanged", Toast.LENGTH_SHORT).show();
+            ;
+
+        }
+    }
+
+    private void placeElement(MathElement mathElement, ImageView eleImg, MathElement focusedEle,
+                              Rect stationaryRect) {
+        /**
+         * Figure out where to place element
+         */
+        SparseArray<MathElement> focusedMathEleList = focusedEle.getFocusedMathEleList();
+        boolean isPlaced = false;
+        ArrayList<Integer> positions = Constant.PLACEMENT_POSITIONS;
+        for (int i = 0; i < positions.size(); i++) {
+            int pos = positions.get(i);
+            boolean isPosFilled = false;
+            for (int j = i; j < focusedMathEleList.size(); j++) {
+                int storedPos = focusedMathEleList.keyAt(j);
+                if (pos == storedPos) {
+                    isPosFilled = true;
+                    break;
+                }
+            }
+            if (!isPosFilled) {
+                placeWherePossible(mathElement, eleImg, focusedEle, stationaryRect, pos);
+                isPlaced = true;
+                break;
+            }
+        }
+        if (!isPlaced) {
+            //revert to last position
+            ElementPos lastPos = mathElement.getLastPos();
+            if (lastPos.getLeft() != 0) {
+                //Toast.makeText(this, "element reverted", Toast.LENGTH_SHORT).show();
+                positionViewInLayout(mathElement, lastPos.getLeft(), lastPos.getTop(), true);
+            } else {
+                Toast.makeText(this, "element was removed", Toast.LENGTH_SHORT).show();
+                removeMathElement(mathElement);
+            }
+        }
+    }
+    private void placeWherePossible(MathElement mathElement, ImageView eleImg, MathElement focusedEle
+            , Rect stationaryRect, int preferredPlacementPos) {
+        switch (preferredPlacementPos) {
+
+            case Constant.LEFT: {
+                if (focusedEle.getFocusedMathEle(Constant.LEFT) == null) placeToLeft(mathElement,
+                        eleImg, focusedEle, stationaryRect, true);
+                else placeElement(mathElement, eleImg, focusedEle, stationaryRect);
+            }
+            break;
+            case Constant.TOP: {
+                if (focusedEle.getFocusedMathEle(Constant.TOP) == null) placeToTop(mathElement,
+                        eleImg, focusedEle, stationaryRect, true);
+                else placeElement(mathElement, eleImg, focusedEle, stationaryRect);
+            }
+            break;
+            case Constant.RIGHT: {
+                if (focusedEle.getFocusedMathEle(Constant.RIGHT) == null) placeToRight(mathElement,
+                        eleImg, focusedEle, stationaryRect, true);
+                else placeElement(mathElement, eleImg, focusedEle, stationaryRect);
+            }
+            break;
+            case Constant.BOTTOM: {
+                if (focusedEle.getFocusedMathEle(Constant.BOTTOM) == null)
+                    placeToBottom(mathElement,
+                            eleImg, focusedEle, stationaryRect, true);
+                else placeElement(mathElement, eleImg, focusedEle, stationaryRect);
+            }
+            break;
+            default: {
+
+            }
+        }
+
+    }
+    private void placeToRight(MathElement mathElement, ImageView eleImg,
+                              MathElement focusedEle, Rect stationaryRect, boolean isAddFocusEle) {
+        if (isAddFocusEle) {
+            mathElement.addFocusedMathEle(Constant.LEFT, focusedEle);
+        }
+
+        int width = focusedEle.getEleImg().getWidth();
+        int xloc = stationaryRect.left + width;
+        int yLoc = stationaryRect.top + focusedEle.getEleImg().getHeight() / 2;
+        positionViewInLayout(mathElement, xloc, yLoc, false);
+    }
+
+    private void placeToBottom(MathElement mathElement, ImageView eleImg,
+                               MathElement focusedEle, Rect stationaryRect, boolean isAddFocusEle) {
+        if (isAddFocusEle) {
+            mathElement.addFocusedMathEle(Constant.TOP, focusedEle);
+        }
+        int xloc = stationaryRect.left + focusedEle.getEleImg().getWidth() / 2;
+        int yLoc = stationaryRect.bottom + focusedEle.getEleImg().getHeight() / 4;
+        positionViewInLayout(mathElement, xloc, yLoc, false);
+    }
+
+    private void placeToTop(MathElement mathElement, ImageView eleImg, MathElement focusedEle,
+                            Rect stationaryRect, boolean isAddFocusEle) {
+        if (isAddFocusEle) {
+            mathElement.addFocusedMathEle(Constant.BOTTOM, focusedEle);
+        }
+        int xloc = stationaryRect.left + focusedEle.getEleImg().getWidth() / 2;
+        int yLoc = stationaryRect.top - focusedEle.getEleImg().getHeight() / 4;
+        positionViewInLayout(mathElement, xloc, yLoc, false);
+    }
+
+    private void placeToLeft(MathElement mathElement, ImageView eleImg, MathElement focusedEle,
+                             Rect stationaryRect, boolean isAddFocusEle) {
+        if (isAddFocusEle) {
+            mathElement.addFocusedMathEle(Constant.RIGHT, focusedEle);
+        }
+        int xloc = stationaryRect.left;
+        int yLoc = stationaryRect.top + focusedEle.getEleImg().getHeight() / 2;
+        positionViewInLayout(mathElement, xloc, yLoc, false);
+
+    }
+    private MathElement getStationaryMathElement(MathElement mathElement) {
+
+        double shortestDis = Integer.MAX_VALUE;
+        MathElement focusedEle = null;
+        int dropEleLeft = mathElement.getEleImg().getLeft();
+        int dropEleTop = mathElement.getEleImg().getTop();
+        for (HashMap.Entry<String, MathElement> entry : mathEleList.entrySet()) {
+            MathElement focusedMathEle = entry.getValue();
+            if (!focusedMathEle.equals(mathElement)) {
+                int stationaryEleLeft = focusedMathEle.getEleImg().getLeft();
+                int stationaryEleTop = focusedMathEle.getEleImg().getTop();
+                int xVal = dropEleLeft - stationaryEleLeft;
+                int yVal = dropEleTop - stationaryEleTop;
+
+                double distance = Math.sqrt((xVal * xVal) + (yVal * yVal));
+                if (focusedEle != null ) Log.d(TAG, "getStationaryMathElement: "+mathElement.getImageTag()+ " distance: "+distance + "from ele: "+focusedEle.getImageTag());
+                if (distance < shortestDis) {
+
+                    shortestDis = distance;
+                    focusedEle = focusedMathEle;
+                }
+            }
+        }
+        return focusedEle;
+    }
+
+    private void removeMathElement(MathElement mathElement) {
+        mathElement.getEleImgLayout().removeView(mathElement.getEleImg());
+        this.mathEleList.remove(mathElement.getEleImg().getTag());
     }
 
     public static void setupActionDownOptions(MathElePos mathElePos, View view, MotionEvent ev) {
@@ -257,13 +505,15 @@ public class MainActivity extends AppCompatActivity {
         constraintSet.connect(dropEleImg.getId(), ConstraintSet.TOP, layout.getId(), ConstraintSet.TOP, 0);
         constraintSet.connect(dropEleImg.getId(), ConstraintSet.LEFT, layout.getId(), ConstraintSet.LEFT, 0);
         constraintSet.connect(dropEleImg.getId(), ConstraintSet.BOTTOM, layout.getId(), ConstraintSet.BOTTOM, 0);
+        int eleImgWidth = dropEleImg.getWidth();
+        int eleImgHeight = dropEleImg.getHeight();
         int layoutConstraintWidth = layout.getWidth() - dropEleImg.getWidth() + 1;
         int layoutConstraintHeight = layout.getHeight() - dropEleImg.getHeight() + 1;
-        float horizontalBias = dropPosX / layoutConstraintWidth;
+        float horizontalBias = (dropPosX - (eleImgWidth / 2)) / layoutConstraintWidth;
         if (horizontalBias < 0) horizontalBias = 0;
         else if (horizontalBias > 1) horizontalBias = 1;
         constraintSet.setHorizontalBias(dropEleImg.getId(), horizontalBias);
-        float verticalBias = dropPosY / layoutConstraintHeight;
+        float verticalBias = (dropPosY - (eleImgHeight / 2)) / layoutConstraintHeight;
         if (verticalBias < 0) verticalBias = 0;
         else if (verticalBias > 1) verticalBias = 1;
         constraintSet.setVerticalBias(dropEleImg.getId(), verticalBias);

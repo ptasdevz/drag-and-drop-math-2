@@ -282,20 +282,6 @@ public class MathElement {
         return (String) eleImg.getTag();
     }
 
-    public static void setUpDragOptions(View view) {
-
-        Log.d(TAG, "Element is being setup");
-
-//        ClipData.Item item = new ClipData.Item((CharSequence) view.getTag());
-
-//        ClipData clipData = new ClipData((CharSequence) view.getTag()
-//                , new String[]{ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
-
-        View.DragShadowBuilder dragShadowBuilder = new View.DragShadowBuilder(view);
-
-        //start drag
-//        view.startDragAndDrop(clipData, dragShadowBuilder, null, 0);
-    }
 
     public ElementPos getLastPos() {
         return lastPos;
