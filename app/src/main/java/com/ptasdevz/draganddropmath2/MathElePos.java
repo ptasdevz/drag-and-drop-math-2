@@ -3,6 +3,7 @@ package com.ptasdevz.draganddropmath2;
 import androidx.annotation.Nullable;
 
 public class MathElePos {
+
     public float lastPtrPosX;
     public float lastPtrPosY;
     public float posX;
