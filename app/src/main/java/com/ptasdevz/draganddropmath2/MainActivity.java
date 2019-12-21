@@ -94,7 +94,10 @@ public class MainActivity extends AppCompatActivity {
 
                             //place math element within workspace
                             MathElement mathEleCopy = mathEleOriginal.dropElement(workspace);
-                            if (mathEleCopy != null) mathEleCopy.repositionElement();
+                            if (mathEleCopy != null){
+                                mathEleCopy.repositionElement();
+                                mathEleCopy.learnNeighbouringElements();
+                            }
                             Log.d(TAG, "on action up : in workspace view");
                         } else {
                             Log.d(TAG, "on action up : not in workspace view");
