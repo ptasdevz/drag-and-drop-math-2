@@ -43,22 +43,23 @@ public class MainActivity extends AppCompatActivity {
         workspace = findViewById(R.id.workspace);
         cLayoutMain = findViewById(R.id.cLayoutMain);
         ImageView trash = findViewById(R.id.trash);
+
         MathElement trashEle = MathElementFactory.getNewInstance(this, trash,
                 MathElement.TRASH, workspace.getId(), workspace, false);
-        MathElement.mathEleList.put(trashEle.getName(),trashEle);
 
-           /*
-        Set up all maths elements with drag and drop capabilities.
-         */
+        MathElement.mathEleList.put(trashEle.getName(), trashEle);
+
+        //Set up all maths elements with drag and drop capabilities.
         for (HashMap.Entry<String, Integer> entry : MathElementsNameRes.entrySet()) {
 
             String name = entry.getKey();
             int resId = entry.getValue();
             final ImageView mathEleSrcImg = findViewById(resId);
-            final MathElement mathEleOriginal = MathElementFactory.getNewInstance(this,
-                    mathEleSrcImg,name, 0, cLayoutMain, false);
+            final MathElement mathEleOriginal;
 
-            MathElement.mathEleList.put(name,mathEleOriginal);
+            mathEleOriginal = MathElementFactory.getNewInstance(this,
+                    mathEleSrcImg, name, 0, cLayoutMain, false);
+            MathElement.mathEleList.put(name, mathEleOriginal);
 
             mathEleSrcImg.setOnTouchListener((view, ev) -> {
                 final int action = ev.getAction();
@@ -89,19 +90,19 @@ public class MainActivity extends AppCompatActivity {
                             int viewYConverted = y - workspaceY;
 
                             // add extra so that x and y coordinates are at the center of element
-                            mathEleOriginal.setViewPosX(viewXConverted + view.getWidth()/2);
-                            mathEleOriginal.setViewPosY(viewYConverted + view.getHeight()/2);
+                            mathEleOriginal.setDropPosX(viewXConverted + view.getWidth() / 2);
+                            mathEleOriginal.setDropPosY(viewYConverted + view.getHeight() / 2);
 
                             //place math element within workspace
-                            MathElement mathEleCopy = mathEleOriginal.dropElement(workspace);
-                            if (mathEleCopy != null){
+                            MathElement mathEleCopy = null;
+                            mathEleCopy = mathEleOriginal.dropElement(workspace);
+
+                            if (mathEleCopy != null) {
                                 mathEleCopy.repositionElement();
                                 mathEleCopy.learnNeighbouringElements();
                             }
-                            Log.d(TAG, "on action up : in workspace view");
-                        } else {
-                            Log.d(TAG, "on action up : not in workspace view");
                         }
+
                         mathEleOriginal.resetMathElePosition();
                         mActivePointerId = INVALID_POINTER_ID;
                         break;
@@ -138,7 +139,6 @@ public class MainActivity extends AppCompatActivity {
         final int pointerIndex = ev.getActionIndex();
         final float x = ev.getX(pointerIndex);
         final float y = ev.getY(pointerIndex);
-        Log.d(TAG, "onTouch: img down: lastPtrPosX:" + x + "----lastPtrPosY:" + y);
 
         // Remember where we started (for dragging)
         mathElement.setLastPtrPosX(x);
@@ -156,38 +156,39 @@ public class MainActivity extends AppCompatActivity {
         // Find the index of the active pointer and fetch its position
         final int pointerIndex = ev.findPointerIndex(mActivePointerId);
 
-        final float movingPtrPosX = ev.getX(pointerIndex);
-        final float movingPtrPosY = ev.getY(pointerIndex);
+        if (pointerIndex != -1) {
+            final float movingPtrPosX = ev.getX(pointerIndex);
+            final float movingPtrPosY = ev.getY(pointerIndex);
 
-        //calculate change of distance from lastPtrPos
-        final float dx = movingPtrPosX - mathElement.getLastPtrPosX();
-        final float dy = movingPtrPosY - mathElement.getLastPtrPosY();
+            //calculate change of distance from lastPtrPos
+            final float dx = movingPtrPosX - mathElement.getLastPtrPosX();
+            final float dy = movingPtrPosY - mathElement.getLastPtrPosY();
 
-        //calculate  the future lastPtrPosX and lastPtrPosY of view
-        float futurePosYdown = dy + view.getY() + view.getHeight();
-        float futurePosYup = dy + view.getY();
-        float futurePosXright = dx + view.getX() + view.getWidth();
-        float futurePosXleft = dx + view.getX();
+            //calculate  the future lastPtrPosX and lastPtrPosY of view
+            float futurePosYdown = dy + view.getY() + view.getHeight();
+            float futurePosYup = dy + view.getY();
+            float futurePosXright = dx + view.getX() + view.getWidth();
+            float futurePosXleft = dx + view.getX();
 
         /*
         only update if view position remains within the limits of the layout which is known
         from the future values.
         */
-        ConstraintLayout parent = (ConstraintLayout) view.getParent();
+            ConstraintLayout parent = (ConstraintLayout) view.getParent();
 
-        if (futurePosYdown < parent.getHeight() && futurePosYup > 0) {
-            mathElement.setPosY(mathElement.getPosY() + dy);
-            mathElement.setLastPtrPosY(movingPtrPosY);// Remember this touch position for the next move event
+            if (futurePosYdown < parent.getHeight() && futurePosYup > 0) {
+                mathElement.setChangeOfPosY(mathElement.getChangeOfPosY() + dy);
+                mathElement.setLastPtrPosY(movingPtrPosY);// Remember this touch position for the next move event
+            }
+            if (futurePosXright < parent.getWidth() && futurePosXleft > 0) {
+
+                mathElement.setChangeOfPosX(mathElement.getChangeOfPosX() + dx);
+                mathElement.setLastPtrPosX(movingPtrPosX);// Remember this touch position for the next move event
+            }
+
+            view.bringToFront();
+            mathElement.positionMathEle(false);
         }
-        if (futurePosXright < parent.getWidth() && futurePosXleft > 0) {
-
-            mathElement.setPosX(mathElement.getPosX() + dx);
-            mathElement.setLastPtrPosX(movingPtrPosX);// Remember this touch position for the next move event
-        }
-
-        view.bringToFront();
-        mathElement.positionViewInCLayout(mathElement.getPosX(), mathElement.getPosY(), view,
-                (ConstraintLayout) view.getParent());
     }
 
 

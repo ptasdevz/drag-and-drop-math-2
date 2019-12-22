@@ -5,7 +5,6 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.View;
@@ -20,9 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import static com.ptasdevz.draganddropmath2.MainActivity.TAG;
-
-public class MathElement {
+public  class MathElement {
 
     public static HashMap<String, MathElement> mathEleList = new HashMap<>();
     public static HashMap<String, Integer> MathElementsNameRes = new HashMap<>();
@@ -63,8 +60,8 @@ public class MathElement {
 
     private static final int DOUBLE_CLICK_TIME = 250; // double click timer
 
-    private ImageView eleImg;
-    private ConstraintLayout eleImgLayout;
+    protected ImageView eleImg;
+    private ConstraintLayout eleLayout;
     private SparseArray<MathElement> neighbouringMathEleList;
     private ElementPos lastPos;
     private ElementPos currPos;
@@ -72,14 +69,16 @@ public class MathElement {
     private boolean waitDouble = true;
     private float lastPtrPosX;
     private float lastPtrPosY;
-    private float posX;
-    private float posY;
+    protected float changeOfPosX;
+    protected float changeOfPosY;
     private String name;
     private float initialElePosX;
     private float initialElePosY;
-    private float viewPosX;
-    private float viewPosY;
+    private float dropPosX;
+    private float dropPosY;
     private Context context;
+
+    private boolean isDropped;
 
     public MathElement(final Context context, ImageView eleImageView,
                        String eleName, int parentId,
@@ -107,13 +106,17 @@ public class MathElement {
         return eleImg;
     }
 
-    public ConstraintLayout getEleImgLayout() {
-        return eleImgLayout;
+    public static HashMap<String, MathElement> getMathEleList() {
+        return mathEleList;
+    }
+
+    public ConstraintLayout getEleLayout() {
+        return eleLayout;
     }
 
     public MathElement dropElement(ConstraintLayout layout) {
-        float x = this.getViewPosX();
-        float y = this.getViewPosY();
+        float x = this.getDropPosX();
+        float y = this.getDropPosY();
 
         // Gets the text data from the item.
         String name = this.getName();
@@ -125,16 +128,25 @@ public class MathElement {
             mathEleCopy = getMathEleCopy(x, y, layout.getId(), layout);
             eleImg = mathEleCopy.getEleImg();
             layout.addView(eleImg);
-            positionInLayout(mathEleCopy, x, y, false);
+            this.rePositionMathEle(mathEleCopy, x, y, false);
             return mathEleCopy;
         }
 
         return null;
     }
 
-    public void positionInLayout(MathElement mathEle, float dropPosX, float dropPosY, boolean isReverted) {
+    /**
+     * Repositions a MathElement object at a given drop position coordinate.
+     * @param mathEle The MathElement to be repositioned.
+     * @param dropPosX The X drop position. The value is relative to parent of the MathElement.
+     * @param dropPosY The Y drop position. The value is relative to the parent of the MathElement.
+     * @param isRevert True indicates element should be reverted to its original coordinates
+     *                   if it cannot be placed.
+     */
+    private void rePositionMathEle(MathElement mathEle, float dropPosX, float dropPosY,
+                                   boolean isRevert) {
 
-        ConstraintLayout layout = mathEle.getEleImgLayout();
+        ConstraintLayout layout = mathEle.getEleLayout();
         ImageView dropEleImg = mathEle.getEleImg();
 
         //update last dropped position of element
@@ -151,7 +163,7 @@ public class MathElement {
         currPos.setRight(dropPosX + dropEleImg.getWidth());
         currPos.setBottom(dropPosY + dropEleImg.getHeight());
 
-        if (isReverted) {
+        if (isRevert) {
 
             lastPos.setLeft(currPos.getLeft());
             lastPos.setTop(currPos.getTop());
@@ -195,14 +207,37 @@ public class MathElement {
         dropEleImg.setBottom(dropEleImg.getBottom() - eleImgHalfHeight);
     }
 
-    public void positionViewInCLayout(float dx, float dy, View view, ConstraintLayout layout) {
+    /**
+     * Places this MathElement object at specific x and y coordinates of the current change of x and
+     * y positions.
+     * @param isRevert True indicates element should be reverted to its original coordinates
+     *                 if it cannot be placed.
+     */
+    public void positionMathEle(boolean isRevert) {
 
+        View view = this.eleImg;
+        float dx, dy;
+        if (isRevert){
+            //calculate change of distance from initial position
+            dx = this.getInitialElePosX() - this.eleImg.getX();
+            dy = this.getInitialElePosY() - this.eleImg.getY();
+
+            //use distance calculated to go back to initial position.
+        }else {
+            dx = this.changeOfPosX;
+            dy = this.changeOfPosY;
+        }
+        ConstraintLayout layout = (ConstraintLayout) view.getParent();
         ConstraintSet constraintSet = new ConstraintSet();
         constraintSet.clone(layout);
-        constraintSet.connect(view.getId(), ConstraintSet.RIGHT, layout.getId(), ConstraintSet.RIGHT, 0);
-        constraintSet.connect(view.getId(), ConstraintSet.TOP, layout.getId(), ConstraintSet.TOP, 0);
-        constraintSet.connect(view.getId(), ConstraintSet.LEFT, layout.getId(), ConstraintSet.LEFT, 0);
-        constraintSet.connect(view.getId(), ConstraintSet.BOTTOM, layout.getId(), ConstraintSet.BOTTOM, 0);
+        constraintSet.connect(view.getId(), ConstraintSet.RIGHT, layout.getId(),
+                ConstraintSet.RIGHT, 0);
+        constraintSet.connect(view.getId(), ConstraintSet.TOP, layout.getId(),
+                ConstraintSet.TOP, 0);
+        constraintSet.connect(view.getId(), ConstraintSet.LEFT, layout.getId(),
+                ConstraintSet.LEFT, 0);
+        constraintSet.connect(view.getId(), ConstraintSet.BOTTOM, layout.getId(),
+                ConstraintSet.BOTTOM, 0);
 
         /*
         calculate vertical and horizontal bias to position element
@@ -232,14 +267,10 @@ public class MathElement {
         constraintSet.applyTo(layout);
     }
 
-    public static HashMap<String, MathElement> getMathEleList() {
-        return mathEleList;
-    }
-
     public void resetMathElePosition() {
-        float x = this.getInitialElePosX() - this.getEleImg().getX();
-        float y = this.getInitialElePosY() - this.getEleImg().getY();
-        positionViewInCLayout(x, y, this.eleImg, (ConstraintLayout) this.getEleImg().getParent());
+
+
+        positionMathEle(true);
     }
 
     /**
@@ -343,6 +374,7 @@ public class MathElement {
                 }
             }
         }
+        this.isDropped = true;
     }
 
     public MathElement getFocusedMathEle(int pos) {
@@ -381,20 +413,20 @@ public class MathElement {
         this.lastPtrPosY = lastPtrPosY;
     }
 
-    public float getPosX() {
-        return posX;
+    public float getChangeOfPosX() {
+        return changeOfPosX;
     }
 
-    public void setPosX(float posX) {
-        this.posX = posX;
+    public void setChangeOfPosX(float changeOfPosX) {
+        this.changeOfPosX = changeOfPosX;
     }
 
-    public float getPosY() {
-        return posY;
+    public float getChangeOfPosY() {
+        return changeOfPosY;
     }
 
-    public void setPosY(float posY) {
-        this.posY = posY;
+    public void setChangeOfPosY(float changeOfPosY) {
+        this.changeOfPosY = changeOfPosY;
     }
 
     public String getName() {
@@ -417,20 +449,24 @@ public class MathElement {
         this.initialElePosY = initialElePosY;
     }
 
-    public float getViewPosX() {
-        return viewPosX;
+    public float getDropPosX() {
+        return dropPosX;
     }
 
-    public void setViewPosX(float viewPosX) {
-        this.viewPosX = viewPosX;
+    public void setDropPosX(float dropPosX) {
+        this.dropPosX = dropPosX;
     }
 
-    public float getViewPosY() {
-        return viewPosY;
+    public float getDropPosY() {
+        return dropPosY;
     }
 
-    public void setViewPosY(float viewPosY) {
-        this.viewPosY = viewPosY;
+    public void setDropPosY(float dropPosY) {
+        this.dropPosY = dropPosY;
+    }
+
+    public boolean isDropped() {
+        return isDropped;
     }
 
     @Override
@@ -499,13 +535,9 @@ public class MathElement {
                     }
                 }
 
-                public void singleClick(Context c) {
-                    Log.d(TAG, "Single click");
-
-                }
+                public void singleClick(Context c) { }
 
                 private void doubleClick() {
-                    Log.d(TAG, "Double click");
                     Iterator iterator = getMathEleList().entrySet().iterator();
                     while (iterator.hasNext()) {
                         HashMap.Entry<String, MathElement>
@@ -513,7 +545,7 @@ public class MathElement {
                         String elementKey = element.getKey();
                         if (!elementKey.contains(TRASH)) {
                             MathElement mathElement = element.getValue();
-                            MathElement.this.getEleImgLayout().removeView(mathElement.getEleImg());
+                            MathElement.this.getEleLayout().removeView(mathElement.getEleImg());
                             iterator.remove();
                         }
                     }
@@ -535,7 +567,6 @@ public class MathElement {
                     repositionElement();
                     learnNeighbouringElements();
                     view.performClick(); //enable click functions as well on element
-                    Log.d(TAG, "touch is released.");
                 }
                 break;
             }
@@ -549,7 +580,7 @@ public class MathElement {
         float elePosY1 = elePosY + srcImgHeight;
         eleImg.setBottom((int) elePosY1);
         eleImg.setId((int) getUniqueId());
-        eleImgLayout = layout;
+        eleLayout = layout;
         neighbouringMathEleList = new SparseArray<>();
         id = getUniqueId();
 //        currPos = new ElementPos(elePosX,elePosY,elePosX1,elePosY1);
@@ -569,7 +600,7 @@ public class MathElement {
     }
 
     private void removeMathElement() {
-        this.getEleImgLayout().removeView(this.getEleImg());
+        this.getEleLayout().removeView(this.getEleImg());
         mathEleList.remove(this.name);
     }
 
@@ -579,9 +610,12 @@ public class MathElement {
         for (int i = 0; i < size; i++) {
             MathElement mathElement = this.neighbouringMathEleList.valueAt(i);
             if (mathElement != null) {
-                SparseArray<MathElement> focusedMathEleList = mathElement.getNeighbouringMathEleList();
-                int key = focusedMathEleList.keyAt(focusedMathEleList.indexOfValue(this));
-                focusedMathEleList.remove(key);
+                SparseArray<MathElement> neighbouringMathEleList = mathElement.getNeighbouringMathEleList();
+                int index = neighbouringMathEleList.indexOfValue(this);
+                if (index > -1) {
+                    int key = neighbouringMathEleList.keyAt(index);
+                    neighbouringMathEleList.remove(key);
+                }
             }
         }
 
@@ -590,11 +624,10 @@ public class MathElement {
 
     private void placeElement(ImageView eleImg, MathElement focusedEle,
                               Rect stationaryRect) {
-        /**
-         * Figure out where to place element
-         */
+
+         //Figure out where to position element
         SparseArray<MathElement> focusedMathEleList = focusedEle.getNeighbouringMathEleList();
-        boolean isPlaced = false;
+        boolean isPositioned = false;
         ArrayList<Integer> positions = Constant.PLACEMENT_POSITIONS;
         for (int i = 0; i < positions.size(); i++) {
             int pos = positions.get(i);
@@ -608,19 +641,20 @@ public class MathElement {
             }
             if (!isPosFilled) {
                 placeWherePossible(eleImg, focusedEle, stationaryRect, pos);
-                isPlaced = true;
+                isPositioned = true;
                 break;
             }
         }
-        if (!isPlaced) {
+        if (!isPositioned) {
             //revert to last position
-            ElementPos lastPos = this.getLastPos();
-            if (lastPos.getLeft() != 0) {
-                //Toast.makeText(this, "element reverted", Toast.LENGTH_SHORT).show();
-                this.positionInLayout(this, lastPos.getLeft(), lastPos.getTop(), true);
-            } else {
-                Toast.makeText(context, "Element cannot be placed.", Toast.LENGTH_SHORT).show();
+            if (this.isDropped) {
+                this.positionMathEle(true);
+                Toast.makeText(context, "Element cannot be re-positioned.", Toast.LENGTH_SHORT).show();
+            }
+            //remove if element has not been previously dropped.
+            else {
                 removeMathElement();
+                Toast.makeText(context, "Element cannot be positioned.", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -632,26 +666,26 @@ public class MathElement {
 
             case Constant.LEFT: {
                 if (focusedEle.getFocusedMathEle(Constant.LEFT) == null) placeToLeft(
-                        focusedEle, focusedEleRect, false);
+                        focusedEle, focusedEleRect);
                 else placeElement(eleImg, focusedEle, focusedEleRect);
             }
             break;
             case Constant.TOP: {
                 if (focusedEle.getFocusedMathEle(Constant.TOP) == null) placeToTop(
-                        focusedEle, focusedEleRect, false);
+                        focusedEle, focusedEleRect);
                 else placeElement(eleImg, focusedEle, focusedEleRect);
             }
             break;
             case Constant.RIGHT: {
                 if (focusedEle.getFocusedMathEle(Constant.RIGHT) == null) placeToRight(
-                        focusedEle, focusedEleRect, false);
+                        focusedEle, focusedEleRect);
                 else placeElement(eleImg, focusedEle, focusedEleRect);
             }
             break;
             case Constant.BOTTOM: {
                 if (focusedEle.getFocusedMathEle(Constant.BOTTOM) == null)
                     placeToBottom(
-                            focusedEle, focusedEleRect, false);
+                            focusedEle, focusedEleRect);
                 else placeElement(eleImg, focusedEle, focusedEleRect);
             }
             break;
@@ -662,43 +696,34 @@ public class MathElement {
 
     }
 
-    private void placeToRight(MathElement focusedEle, Rect focusedEleRect, boolean isAddFocusEle) {
-        if (isAddFocusEle) {
-            this.addNeighbouringMathEle(Constant.LEFT, focusedEle);
-        }
+    private void placeToRight(MathElement focusedEle, Rect focusedEleRect) {
 
         int width = focusedEle.getEleImg().getWidth();
         int xloc = focusedEleRect.left + width + width / 4;
         int yLoc = focusedEleRect.top + focusedEle.getEleImg().getHeight() / 2;
-        this.positionInLayout(this, xloc, yLoc, false);
+        this.rePositionMathEle(this, xloc, yLoc, false);
     }
 
-    private void placeToBottom(MathElement focusedEle, Rect focusedEleRect, boolean isAddFocusEle) {
-        if (isAddFocusEle) {
-            this.addNeighbouringMathEle(Constant.TOP, focusedEle);
-        }
+    private void placeToBottom(MathElement focusedEle, Rect focusedEleRect) {
+
         int xloc = focusedEleRect.left + focusedEle.getEleImg().getWidth() / 2;
         int yLoc = focusedEleRect.bottom + focusedEle.getEleImg().getHeight() / 4;
-        this.positionInLayout(this, xloc, yLoc, false);
+        this.rePositionMathEle(this, xloc, yLoc, false);
     }
 
-    private void placeToTop(MathElement focusedEle, Rect focusedEleRect, boolean isAddFocusEle) {
-        if (isAddFocusEle) {
-            this.addNeighbouringMathEle(Constant.BOTTOM, focusedEle);
-        }
+    private void placeToTop(MathElement focusedEle, Rect focusedEleRect) {
+
         int xloc = focusedEleRect.left + focusedEle.getEleImg().getWidth() / 2;
         int yLoc = focusedEleRect.top - focusedEle.getEleImg().getHeight() / 4;
-        this.positionInLayout(this, xloc, yLoc, false);
+        this.rePositionMathEle(this, xloc, yLoc, false);
     }
 
-    private void placeToLeft(MathElement focusedEle, Rect focusedEleRect, boolean isAddFocusEle) {
-        if (isAddFocusEle) {
-            this.addNeighbouringMathEle(Constant.RIGHT, focusedEle);
-        }
+    private void placeToLeft(MathElement focusedEle, Rect focusedEleRect) {
+
         int width = focusedEle.getEleImg().getWidth();
         int xloc = focusedEleRect.left - width / 4;
         int yLoc = focusedEleRect.top + focusedEle.getEleImg().getHeight() / 2;
-        this.positionInLayout(this, xloc, yLoc, false);
+        this.rePositionMathEle(this, xloc, yLoc, false);
     }
 
     private MathElement getClosestNeighbouringMathEle() {
@@ -723,9 +748,6 @@ public class MathElement {
                 int yVal = dropEleTop - stationaryEleTop;
 
                 double distance = Math.sqrt((xVal * xVal) + (yVal * yVal));
-                if (focusedEle != null) Log.d(TAG, "getClosestNeighbouringMathEle: "
-                        + this.getName() + " is : " + distance + "from ele: "
-                        + focusedEle.getName());
 
                 if (distance < shortestDis) {
 
