@@ -159,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
         final float movingPtrPosX = ev.getX(pointerIndex);
         final float movingPtrPosY = ev.getY(pointerIndex);
 
-        //calculate distance moved
+        //calculate change of distance from lastPtrPos
         final float dx = movingPtrPosX - mathElement.getLastPtrPosX();
         final float dy = movingPtrPosY - mathElement.getLastPtrPosY();
 
@@ -170,7 +170,8 @@ public class MainActivity extends AppCompatActivity {
         float futurePosXleft = dx + view.getX();
 
         /*
-        only update if view position remains within the limits of the layout.
+        only update if view position remains within the limits of the layout which is known
+        from the future values.
         */
         ConstraintLayout parent = (ConstraintLayout) view.getParent();
 

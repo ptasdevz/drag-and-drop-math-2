@@ -207,10 +207,11 @@ public class MathElement {
         /*
         calculate vertical and horizontal bias to position element
          */
-        int layoutConstraintWidth = layout.getWidth() - view.getWidth() + 1;
-        int layoutConstraintHeight = layout.getHeight() - view.getHeight() + 1;
+        int layoutConstraintWidth = layout.getWidth() - view.getWidth();
+        int layoutConstraintHeight = layout.getHeight() - view.getHeight();
 
         float horizontalBias = (dx + view.getX()) / layoutConstraintWidth;
+
         //place view horizontal bias at the minimum or maximum of the constraint
         if (horizontalBias < 0) {
             horizontalBias = 0;
@@ -247,98 +248,98 @@ public class MathElement {
      */
     public void repositionElement() {
         ImageView eleImg = this.getEleImg();
-        MathElement focusedEle = getClosestStationaryCopiedMathElement();
+        MathElement neighbouringMathEle = getClosestNeighbouringMathEle();
 
-        if (focusedEle != null) {
+        if (neighbouringMathEle != null) {
 
-            Rect focusedEleRect = new Rect();
-            focusedEleRect.top = focusedEle.getEleImg().getTop();
-            focusedEleRect.left = focusedEle.getEleImg().getLeft();
-            focusedEleRect.bottom = focusedEle.getEleImg().getBottom();
-            focusedEleRect.right = focusedEle.getEleImg().getRight();
+            Rect neighbouringMathEleRect = new Rect();
+            neighbouringMathEleRect.top = neighbouringMathEle.getEleImg().getTop();
+            neighbouringMathEleRect.left = neighbouringMathEle.getEleImg().getLeft();
+            neighbouringMathEleRect.bottom = neighbouringMathEle.getEleImg().getBottom();
+            neighbouringMathEleRect.right = neighbouringMathEle.getEleImg().getRight();
 
-            Rect dropEleRect = new Rect();
-            dropEleRect.top = eleImg.getTop();
-            dropEleRect.left = eleImg.getLeft();
-            dropEleRect.bottom = eleImg.getBottom();
-            dropEleRect.right = eleImg.getRight();
+            Rect thisRect = new Rect();
+            thisRect.top = eleImg.getTop();
+            thisRect.left = eleImg.getLeft();
+            thisRect.bottom = eleImg.getBottom();
+            thisRect.right = eleImg.getRight();
 
-            if (dropEleRect.intersect(focusedEleRect)) {
-                Log.d(TAG, "repositionElement: intersect ");
-                //remove element focused element is trash can
-                String focusedElementName = focusedEle.getName();
+            if (thisRect.intersect(neighbouringMathEleRect)) {
+
+                //remove
+                String neighbouringMathEleName = neighbouringMathEle.getName();
                 String mathElementName = this.getName();
 
                 //removes the element if intersects with trash
-                if (focusedElementName.contains(MathElement.TRASH)) {
+                if (neighbouringMathEleName.contains(MathElement.TRASH)) {
                     removeMathElement();
                 } else if (mathElementName.contains(MathElement.TRASH)) {
-                    removeMathElement();
+                    neighbouringMathEle.removeMathElement();
                 }
 
                 //place element in a fix position: left, top, right or bottom
                 else {
                     //drop rect intersected sides with stationary rect are updated to
                     // those of stationary rect
-                    int intersectHeight = dropEleRect.bottom - dropEleRect.top;
-                    int intersectWidth = dropEleRect.right - dropEleRect.left;
+                    int intersectHeight = thisRect.bottom - thisRect.top;
+                    int intersectWidth = thisRect.right - thisRect.left;
 
-                    //all sides of focusedEle rect is intersected. cannot be placed
-                    if (dropEleRect.left == focusedEleRect.left
-                            && dropEleRect.top == focusedEleRect.top
-                            && dropEleRect.right == focusedEleRect.right
-                            && dropEleRect.bottom == focusedEleRect.bottom) {
+                    //all sides of neighbouringMathEle rect is intersected. cannot be placed
+                    if (thisRect.left == neighbouringMathEleRect.left
+                            && thisRect.top == neighbouringMathEleRect.top
+                            && thisRect.right == neighbouringMathEleRect.right
+                            && thisRect.bottom == neighbouringMathEleRect.bottom) {
                     }
 
-                    //top-left side of focusedEle rect is intersected.
-                    else if (dropEleRect.left == focusedEleRect.left
-                            && dropEleRect.top == focusedEleRect.top) {
+                    //top-left side of neighbouringMathEle rect is intersected.
+                    else if (thisRect.left == neighbouringMathEleRect.left
+                            && thisRect.top == neighbouringMathEleRect.top) {
                         //place at top
                         if (intersectHeight < intersectWidth) {
-                            placeWherePossible(eleImg, focusedEle, focusedEleRect, Constant.TOP);
+                            placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.TOP);
                         }
                         //place at left
-                        else placeWherePossible(eleImg, focusedEle, focusedEleRect, Constant.LEFT);
+                        else placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.LEFT);
                     }
 
-                    //bottom-left side of focusedEle rect is intersected
-                    else if (dropEleRect.left == focusedEleRect.left
-                            && dropEleRect.bottom == focusedEleRect.bottom) {
+                    //bottom-left side of neighbouringMathEle rect is intersected
+                    else if (thisRect.left == neighbouringMathEleRect.left
+                            && thisRect.bottom == neighbouringMathEleRect.bottom) {
 
                         //place at bottom
                         if (intersectHeight < intersectWidth) {
-                            placeWherePossible(eleImg, focusedEle, focusedEleRect, Constant.BOTTOM);
+                            placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.BOTTOM);
                         }
                         //place at left
-                        else placeWherePossible(eleImg, focusedEle, focusedEleRect, Constant.LEFT);
+                        else placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.LEFT);
                     }
 
                     //top-right side of stationary rect is intersected
-                    else if (dropEleRect.right == focusedEleRect.right
-                            && dropEleRect.top == focusedEleRect.top) {
+                    else if (thisRect.right == neighbouringMathEleRect.right
+                            && thisRect.top == neighbouringMathEleRect.top) {
 
                         //place at top
                         if (intersectHeight < intersectWidth) {
-                            placeWherePossible(eleImg, focusedEle, focusedEleRect, Constant.TOP);
+                            placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.TOP);
                         }
                         //place at right
-                        else placeWherePossible(eleImg, focusedEle, focusedEleRect, Constant.RIGHT);
+                        else placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.RIGHT);
                     }
 
-                    //bottom-right side of focusedEle rect is intersected.
-                    else if (dropEleRect.right == focusedEleRect.right
-                            && dropEleRect.bottom == focusedEleRect.bottom) {
+                    //bottom-right side of neighbouringMathEle rect is intersected.
+                    else if (thisRect.right == neighbouringMathEleRect.right
+                            && thisRect.bottom == neighbouringMathEleRect.bottom) {
 
                         //place at bottom
                         if (intersectHeight < intersectWidth) {
-                            placeWherePossible(eleImg, focusedEle, focusedEleRect, Constant.BOTTOM);
+                            placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.BOTTOM);
                         }
                         // place at right
-                        else placeWherePossible(eleImg, focusedEle, focusedEleRect, Constant.RIGHT);
+                        else placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.RIGHT);
                     }
 
                     //place in next available position starting from left
-                    else placeElement(eleImg, focusedEle, focusedEleRect);
+                    else placeElement(eleImg, neighbouringMathEle, neighbouringMathEleRect);
                 }
             }
         }
@@ -700,7 +701,7 @@ public class MathElement {
         this.positionInLayout(this, xloc, yLoc, false);
     }
 
-    private MathElement getClosestStationaryCopiedMathElement() {
+    private MathElement getClosestNeighbouringMathEle() {
 
         double shortestDis = Integer.MAX_VALUE;
         MathElement focusedEle = null;
@@ -722,7 +723,7 @@ public class MathElement {
                 int yVal = dropEleTop - stationaryEleTop;
 
                 double distance = Math.sqrt((xVal * xVal) + (yVal * yVal));
-                if (focusedEle != null) Log.d(TAG, "getClosestStationaryCopiedMathElement: "
+                if (focusedEle != null) Log.d(TAG, "getClosestNeighbouringMathEle: "
                         + this.getName() + " is : " + distance + "from ele: "
                         + focusedEle.getName());
 
