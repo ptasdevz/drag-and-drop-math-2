@@ -14,15 +14,21 @@ import android.widget.Toast;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.ptasdevz.tutormypeerrestapi.user.usertype.UserModelAbstractAdapter;
+
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
-public  class MathElement {
+public class MathElement  extends TutorMyPeerElement{
 
     public static HashMap<String, MathElement> mathEleList = new HashMap<>();
     public static HashMap<String, Integer> MathElementsNameRes = new HashMap<>();
+    private static GsonBuilder gsonBilder;
+    private static Gson gson;
     public static String NUMBER_0 = "number0";
     public static String NUMBER_1 = "number1";
     public static String NUMBER_2 = "number2";
@@ -63,8 +69,6 @@ public  class MathElement {
     protected ImageView eleImg;
     private ConstraintLayout eleLayout;
     private SparseArray<MathElement> neighbouringMathEleList;
-    private ElementPos lastPos;
-    private ElementPos currPos;
     private long id;
     private boolean waitDouble = true;
     private float lastPtrPosX;
@@ -77,6 +81,7 @@ public  class MathElement {
     private float dropPosX;
     private float dropPosY;
     private Context context;
+    public int remoteAction;
 
     private boolean isDropped;
 
@@ -128,7 +133,7 @@ public  class MathElement {
             mathEleCopy = getMathEleCopy(x, y, layout.getId(), layout);
             eleImg = mathEleCopy.getEleImg();
             layout.addView(eleImg);
-            this.rePositionMathEle(mathEleCopy, x, y, false);
+            this.rePositionMathEle(mathEleCopy, x, y);
             return mathEleCopy;
         }
 
@@ -137,40 +142,15 @@ public  class MathElement {
 
     /**
      * Repositions a MathElement object at a given drop position coordinate.
-     * @param mathEle The MathElement to be repositioned.
+     *
+     * @param mathEle  The MathElement to be repositioned.
      * @param dropPosX The X drop position. The value is relative to parent of the MathElement.
      * @param dropPosY The Y drop position. The value is relative to the parent of the MathElement.
-     * @param isRevert True indicates element should be reverted to its original coordinates
-     *                   if it cannot be placed.
      */
-    private void rePositionMathEle(MathElement mathEle, float dropPosX, float dropPosY,
-                                   boolean isRevert) {
+    private void rePositionMathEle(MathElement mathEle, float dropPosX, float dropPosY) {
 
         ConstraintLayout layout = mathEle.getEleLayout();
         ImageView dropEleImg = mathEle.getEleImg();
-
-        //update last dropped position of element
-        ElementPos lastPos = mathEle.getLastPos();
-        ElementPos currPos = mathEle.getCurrPos();
-
-        lastPos.setLeft(currPos.getLeft());
-        lastPos.setTop(currPos.getTop());
-        lastPos.setRight(currPos.getRight());
-        lastPos.setBottom(currPos.getBottom());
-
-        currPos.setLeft(dropPosX);
-        currPos.setTop(dropPosY);
-        currPos.setRight(dropPosX + dropEleImg.getWidth());
-        currPos.setBottom(dropPosY + dropEleImg.getHeight());
-
-        if (isRevert) {
-
-            lastPos.setLeft(currPos.getLeft());
-            lastPos.setTop(currPos.getTop());
-            lastPos.setRight(currPos.getRight());
-            lastPos.setBottom(currPos.getBottom());
-
-        }
 
         ConstraintSet constraintSet = new ConstraintSet();
         constraintSet.clone(layout);
@@ -210,6 +190,7 @@ public  class MathElement {
     /**
      * Places this MathElement object at specific x and y coordinates of the current change of x and
      * y positions.
+     *
      * @param isRevert True indicates element should be reverted to its original coordinates
      *                 if it cannot be placed.
      */
@@ -217,13 +198,13 @@ public  class MathElement {
 
         View view = this.eleImg;
         float dx, dy;
-        if (isRevert){
+        if (isRevert) {
             //calculate change of distance from initial position
             dx = this.getInitialElePosX() - this.eleImg.getX();
             dy = this.getInitialElePosY() - this.eleImg.getY();
 
             //use distance calculated to go back to initial position.
-        }else {
+        } else {
             dx = this.changeOfPosX;
             dy = this.changeOfPosY;
         }
@@ -330,7 +311,8 @@ public  class MathElement {
                             placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.TOP);
                         }
                         //place at left
-                        else placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.LEFT);
+                        else
+                            placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.LEFT);
                     }
 
                     //bottom-left side of neighbouringMathEle rect is intersected
@@ -342,7 +324,8 @@ public  class MathElement {
                             placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.BOTTOM);
                         }
                         //place at left
-                        else placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.LEFT);
+                        else
+                            placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.LEFT);
                     }
 
                     //top-right side of stationary rect is intersected
@@ -354,7 +337,8 @@ public  class MathElement {
                             placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.TOP);
                         }
                         //place at right
-                        else placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.RIGHT);
+                        else
+                            placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.RIGHT);
                     }
 
                     //bottom-right side of neighbouringMathEle rect is intersected.
@@ -366,7 +350,8 @@ public  class MathElement {
                             placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.BOTTOM);
                         }
                         // place at right
-                        else placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.RIGHT);
+                        else
+                            placeWherePossible(eleImg, neighbouringMathEle, neighbouringMathEleRect, Constant.RIGHT);
                     }
 
                     //place in next available position starting from left
@@ -387,14 +372,6 @@ public  class MathElement {
 
     public SparseArray<MathElement> getNeighbouringMathEleList() {
         return neighbouringMathEleList;
-    }
-
-    public ElementPos getLastPos() {
-        return lastPos;
-    }
-
-    public ElementPos getCurrPos() {
-        return currPos;
     }
 
     public float getLastPtrPosX() {
@@ -470,6 +447,29 @@ public  class MathElement {
     }
 
     @Override
+    public String toString() {
+        return "MathElement{" +
+                "eleImg=" + eleImg +
+                ", eleLayout=" + eleLayout +
+                ", neighbouringMathEleList=" + neighbouringMathEleList +
+                ", id=" + id +
+                ", waitDouble=" + waitDouble +
+                ", lastPtrPosX=" + lastPtrPosX +
+                ", lastPtrPosY=" + lastPtrPosY +
+                ", changeOfPosX=" + changeOfPosX +
+                ", changeOfPosY=" + changeOfPosY +
+                ", name='" + name + '\'' +
+                ", initialElePosX=" + initialElePosX +
+                ", initialElePosY=" + initialElePosY +
+                ", dropPosX=" + dropPosX +
+                ", dropPosY=" + dropPosY +
+                ", context=" + context +
+                ", remoteAction=" + remoteAction +
+                ", isDropped=" + isDropped +
+                '}';
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (obj == null) return false;
@@ -535,7 +535,8 @@ public  class MathElement {
                     }
                 }
 
-                public void singleClick(Context c) { }
+                public void singleClick(Context c) {
+                }
 
                 private void doubleClick() {
                     Iterator iterator = getMathEleList().entrySet().iterator();
@@ -555,11 +556,11 @@ public  class MathElement {
         eleImg.setOnTouchListener((view, motionEvent) -> {
             switch (motionEvent.getAction()) {
                 case MotionEvent.ACTION_DOWN: {
-                    MainActivity.setupActionDownOptions(this, view, motionEvent);
+                    MainActivity.actionDownOptions(this, view, motionEvent);
                 }
                 break;
                 case MotionEvent.ACTION_MOVE: {
-                    MainActivity.setupActionMoveOptions(this, view, motionEvent);
+                    MainActivity.actionMoveOptions(this, view, motionEvent);
                 }
                 break;
                 case MotionEvent.ACTION_UP: {
@@ -584,8 +585,6 @@ public  class MathElement {
         neighbouringMathEleList = new SparseArray<>();
         id = getUniqueId();
 //        currPos = new ElementPos(elePosX,elePosY,elePosX1,elePosY1);
-        currPos = new ElementPos();
-        lastPos = new ElementPos();
     }
 
     private MathElement getMathEleCopy(float x, float y, int parentId, ConstraintLayout layout) {
@@ -625,7 +624,7 @@ public  class MathElement {
     private void placeElement(ImageView eleImg, MathElement focusedEle,
                               Rect stationaryRect) {
 
-         //Figure out where to position element
+        //Figure out where to position element
         SparseArray<MathElement> focusedMathEleList = focusedEle.getNeighbouringMathEleList();
         boolean isPositioned = false;
         ArrayList<Integer> positions = Constant.PLACEMENT_POSITIONS;
@@ -701,21 +700,21 @@ public  class MathElement {
         int width = focusedEle.getEleImg().getWidth();
         int xloc = focusedEleRect.left + width + width / 4;
         int yLoc = focusedEleRect.top + focusedEle.getEleImg().getHeight() / 2;
-        this.rePositionMathEle(this, xloc, yLoc, false);
+        this.rePositionMathEle(this, xloc, yLoc);
     }
 
     private void placeToBottom(MathElement focusedEle, Rect focusedEleRect) {
 
         int xloc = focusedEleRect.left + focusedEle.getEleImg().getWidth() / 2;
         int yLoc = focusedEleRect.bottom + focusedEle.getEleImg().getHeight() / 4;
-        this.rePositionMathEle(this, xloc, yLoc, false);
+        this.rePositionMathEle(this, xloc, yLoc);
     }
 
     private void placeToTop(MathElement focusedEle, Rect focusedEleRect) {
 
         int xloc = focusedEleRect.left + focusedEle.getEleImg().getWidth() / 2;
         int yLoc = focusedEleRect.top - focusedEle.getEleImg().getHeight() / 4;
-        this.rePositionMathEle(this, xloc, yLoc, false);
+        this.rePositionMathEle(this, xloc, yLoc);
     }
 
     private void placeToLeft(MathElement focusedEle, Rect focusedEleRect) {
@@ -723,7 +722,7 @@ public  class MathElement {
         int width = focusedEle.getEleImg().getWidth();
         int xloc = focusedEleRect.left - width / 4;
         int yLoc = focusedEleRect.top + focusedEle.getEleImg().getHeight() / 2;
-        this.rePositionMathEle(this, xloc, yLoc, false);
+        this.rePositionMathEle(this, xloc, yLoc);
     }
 
     private MathElement getClosestNeighbouringMathEle() {
@@ -761,7 +760,8 @@ public  class MathElement {
 
     /**
      * Adds a math element as a neighbour of this math element.
-     * @param pos the neighbour's position
+     *
+     * @param pos                 the neighbour's position
      * @param neighbouringMathEle the neighbouring math element
      */
     private void addNeighbouringMathEle(int pos, MathElement neighbouringMathEle) {
@@ -807,52 +807,52 @@ public  class MathElement {
                         if (thisRect.left == mathEleRect.left
                                 && thisRect.top == mathEleRect.top
                                 && thisRect.bottom == mathEleRect.bottom) {
-                            addNeighbouringMathEle(Constant.RIGHT,mathElement);
+                            addNeighbouringMathEle(Constant.RIGHT, mathElement);
                         }
 
                         //left element is being considered
                         else if (thisRect.right == mathEleRect.right
                                 && thisRect.top == mathEleRect.top
                                 && thisRect.bottom == mathEleRect.bottom) {
-                            addNeighbouringMathEle(Constant.LEFT,mathElement);
+                            addNeighbouringMathEle(Constant.LEFT, mathElement);
                         }
 
                         //top element is being considered
                         else if (thisRect.right == mathEleRect.right
                                 && thisRect.left == mathEleRect.left
                                 && thisRect.bottom == mathEleRect.bottom) {
-                            addNeighbouringMathEle(Constant.TOP,mathElement);
+                            addNeighbouringMathEle(Constant.TOP, mathElement);
                         }
 
                         //top-left element is being considered
                         else if (thisRect.right == mathEleRect.right
                                 && thisRect.bottom == mathEleRect.bottom) {
-                            addNeighbouringMathEle(Constant.TOP_LEFT,mathElement);
+                            addNeighbouringMathEle(Constant.TOP_LEFT, mathElement);
                         }
 
                         //top-right element is being considered
                         else if (thisRect.left == mathEleRect.left
                                 && thisRect.bottom == mathEleRect.bottom) {
-                            addNeighbouringMathEle(Constant.TOP_RIGHT,mathElement);
+                            addNeighbouringMathEle(Constant.TOP_RIGHT, mathElement);
                         }
 
                         //bottom element is being considered
                         else if (thisRect.right == mathEleRect.right
                                 && thisRect.left == mathEleRect.left
                                 && thisRect.top == mathEleRect.top) {
-                            addNeighbouringMathEle(Constant.BOTTOM,mathElement);
+                            addNeighbouringMathEle(Constant.BOTTOM, mathElement);
                         }
 
                         //bottom-left element is being considered
                         else if (thisRect.right == mathEleRect.right
                                 && thisRect.top == mathEleRect.top) {
-                            addNeighbouringMathEle(Constant.BOTTOM_LEFT,mathElement);
+                            addNeighbouringMathEle(Constant.BOTTOM_LEFT, mathElement);
 
                         }
                         //bottom-right element is being considered
                         else if (thisRect.left == mathEleRect.left
                                 && thisRect.top == mathEleRect.top) {
-                            addNeighbouringMathEle(Constant.BOTTOM_RIGHT,mathElement);
+                            addNeighbouringMathEle(Constant.BOTTOM_RIGHT, mathElement);
                         }
                     }
                 }

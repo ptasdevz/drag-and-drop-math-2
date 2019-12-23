@@ -12,6 +12,10 @@ public class Constant {
     public static final int BOTTOM = 7;
     public static final int BOTTOM_LEFT = 8;
 
+    enum LayoutTypes  {
+        MAIN,WORKSPACE
+    }
+
     public static ArrayList<Integer> POSITIONS = new ArrayList();
     public static ArrayList<Integer> PLACEMENT_POSITIONS = new ArrayList();
 
