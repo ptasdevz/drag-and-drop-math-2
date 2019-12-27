@@ -16,18 +16,18 @@ public class MathElementFactory {
     public static MathElement getNewInstance(Context context, Drawable drawable,
                                              Float elePosX, Float elePosY, Float srcImgWidth,
                                              Float srcImgHeight, String eleName, int parentId,
-                                             ConstraintLayout constraintLayout,
-                                             boolean isCopy) {
+                                             ConstraintLayout workspaceLayout, ConstraintLayout mainLayout,
+                                             boolean isCopy, boolean isAlsoRemote) {
         return  new MathElement(context,drawable,elePosX,elePosY,srcImgWidth,srcImgHeight,
-                eleName,parentId,constraintLayout,isCopy);
+                eleName,parentId, workspaceLayout, mainLayout,isCopy, isAlsoRemote);
     }
 
     public static MathElement getNewInstance(Context context, ImageView imageView,
                                              String eleName, int parentId,
-                                             ConstraintLayout constraintLayout,
-                                             boolean isCopy) {
+                                             ConstraintLayout workspaceLayout, ConstraintLayout mainLayout,
+                                             boolean isCopy, boolean isAlsoRemote) {
 
         return  new MathElement(context,imageView, eleName,parentId,
-                constraintLayout,isCopy);
+                workspaceLayout, mainLayout,isCopy, isAlsoRemote);
     }
 }
