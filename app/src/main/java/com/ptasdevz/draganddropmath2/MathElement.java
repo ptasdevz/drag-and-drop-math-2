@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.View;
@@ -26,6 +27,9 @@ import static android.view.MotionEvent.INVALID_POINTER_ID;
 
 public class MathElement extends TutorMyPeerElement {
 
+    public static final String SCREEN_WIDTH = "screenWidth";
+    public static final String SCREEN_HEIGHT = "screenHeight";
+    public static final String ELE_NAME = "eleName";
     public static HashMap<String, MathElement> mathEleList = new HashMap<>();
     public static HashMap<String, Integer> MathElementsNameRes = new HashMap<>();
     public static String sendMathElementURI = "/app/send-math-element-message";
@@ -33,6 +37,7 @@ public class MathElement extends TutorMyPeerElement {
     public static HashMap<String, Object> remoteDataToSend = new HashMap<>();
     public static HashMap<String, Object> remoteDataRecieved = new HashMap<>();
     public static int mActivePointerId = INVALID_POINTER_ID;
+    public static final String TAG = "ptasdevz";
     public static String NUMBER_0 = "number0";
     public static String NUMBER_1 = "number1";
     public static String NUMBER_2 = "number2";
@@ -336,6 +341,7 @@ public class MathElement extends TutorMyPeerElement {
         eleImg.setOnTouchListener((view, motionEvent) -> {
 
             boolean isRemoteEvent = "remote".equalsIgnoreCase((String) view.getTag());
+//            boolean isRemoteEvent = motionEvent.getPressure() == 0;
 
             switch (motionEvent.getAction()) {
                 case MotionEvent.ACTION_DOWN: {
@@ -344,7 +350,9 @@ public class MathElement extends TutorMyPeerElement {
                     float evY = motionEvent.getY(motionEvent.getActionIndex());
                     float evX = motionEvent.getX(motionEvent.getActionIndex());
                     actionDownLocalOptions(this, evX, evY);
-                    if (!isRemoteEvent) saveElementPos(0, 0,
+//                    if (!isRemoteEvent) saveElementPos(0, 0,
+//                            MotionEvent.ACTION_DOWN, this, false);
+                    if (!isRemoteEvent) saveElementPos(motionEvent.getRawX(), motionEvent.getRawY(),
                             MotionEvent.ACTION_DOWN, this, false);
 
                 }
@@ -356,7 +364,9 @@ public class MathElement extends TutorMyPeerElement {
                     float movingPtrPosY = motionEvent.getY(pointerIndex);
                     actionMoveLocalOptions(this, pointerIndex, movingPtrPosX, movingPtrPosY);
                     this.positionMathEle(false);
-                    if (!isRemoteEvent) saveElementPos(this.getChangeOfPosX(), this.getChangeOfPosY(),
+//                    if (!isRemoteEvent) saveElementPos(this.getChangeOfPosX(), this.getChangeOfPosY(),
+//                                MotionEvent.ACTION_MOVE, this, false);
+                    if (!isRemoteEvent) saveElementPos(motionEvent.getRawX(), motionEvent.getRawY(),
                                 MotionEvent.ACTION_MOVE, this, false);
                 }
                 break;
@@ -368,7 +378,7 @@ public class MathElement extends TutorMyPeerElement {
                     }else {
                         actionUpLocalOptionsEleOriginal(isRemoteEvent);
                         resetMathElePosition();
-                        saveElementPos(0, 0, MotionEvent.ACTION_UP, this,
+                        saveElementPos(motionEvent.getRawX(), motionEvent.getRawY(), MotionEvent.ACTION_UP, this,
                                 isRemoteEvent);
 
                         //send math element position data remotely
@@ -710,10 +720,10 @@ public class MathElement extends TutorMyPeerElement {
             elementPos.action = action;
             elementPos.X = dx;
             elementPos.Y = dy;
-            ConstraintLayout parent = (ConstraintLayout) mathElement.getEleImg().getParent();
-            remoteDataToSend.put("parentWidth", parent.getWidth());
-            remoteDataToSend.put("parentHeight", parent.getHeight());
-            remoteDataToSend.put("eleName", mathElement.getName());
+//            ConstraintLayout parent = (ConstraintLayout) mathElement.getEleImg().getParent();
+            remoteDataToSend.put(SCREEN_WIDTH, DragAndDropMathApplication.screenWidth);
+            remoteDataToSend.put(SCREEN_HEIGHT, DragAndDropMathApplication.screenHeight);
+            remoteDataToSend.put(ELE_NAME, mathElement.getName());
             elementPosArrayList.add(elementPos);
         }
     }

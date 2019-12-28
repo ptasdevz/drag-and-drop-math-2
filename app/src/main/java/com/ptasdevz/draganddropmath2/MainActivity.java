@@ -2,11 +2,15 @@ package com.ptasdevz.draganddropmath2;
 
 import android.annotation.SuppressLint;
 import android.app.Instrumentation;
+import android.content.Context;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.WindowManager;
 import android.widget.ImageView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,7 +27,10 @@ import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
 import ua.naiksoftware.stomp.Stomp;
 
+import static com.ptasdevz.draganddropmath2.MathElement.ELE_NAME;
 import static com.ptasdevz.draganddropmath2.MathElement.MathElementsNameRes;
+import static com.ptasdevz.draganddropmath2.MathElement.SCREEN_HEIGHT;
+import static com.ptasdevz.draganddropmath2.MathElement.SCREEN_WIDTH;
 import static com.ptasdevz.draganddropmath2.MathElement.remoteDataRecieved;
 
 public class MainActivity extends AppCompatActivity {
@@ -41,6 +48,15 @@ public class MainActivity extends AppCompatActivity {
 
         workspaceLayout = findViewById(R.id.workspace);
         mainLayout = findViewById(R.id.cLayoutMain);
+
+        //Get Screen Width and Height
+        int widthPixels = getResources().getDisplayMetrics().widthPixels;
+        int heightPixels = getResources().getDisplayMetrics().heightPixels;
+        int navigationBarHeight = getNavigationBarHeight(this);
+        heightPixels +=navigationBarHeight;
+        DragAndDropMathApplication.screenWidth = widthPixels;
+        DragAndDropMathApplication.screenHeight = heightPixels;
+
 
         //Set up all maths elements with drag and drop capabilities.
         for (HashMap.Entry<String, Integer> entry : MathElementsNameRes.entrySet()) {
@@ -198,11 +214,11 @@ public class MainActivity extends AppCompatActivity {
                                       ArrayList<ElementPos> elementPosArrayList) {
         new Thread(() -> {
 
-            int[] locationImg = new int[2];
-            double parentWidth = (double) remoteDataMap.get("parentWidth");
-            double parentHeight = (double) remoteDataMap.get("parentHeight");
+//            int[] locationImg = new int[2];
+            double screenWidth = (double) remoteDataMap.get(SCREEN_WIDTH);
+            double screenHeight = (double) remoteDataMap.get(SCREEN_HEIGHT);
 
-            String eleName = (String) remoteDataMap.get("eleName");
+            String eleName = (String) remoteDataMap.get(ELE_NAME);
             MathElement mathElement = MathElement.mathEleList.get(eleName);
             ImageView eleImage = mathElement.getEleImg();
             eleImage.setTag("remote");
@@ -216,36 +232,44 @@ public class MainActivity extends AppCompatActivity {
                 coordinates are in relation to the current window in which
                 the elements are located.
              */
-            eleImage.getLocationInWindow(locationImg);
-            int width = eleImage.getWidth();
-            int height = eleImage.getHeight();
-            int halfWidthImageView = width / 2;
-            int halfHeightImageView = height / 2;
-            float eventX = locationImg[0] + halfHeightImageView;
-            float eventY = locationImg[1] + halfHeightImageView;
+//            eleImage.getLocationInWindow(locationImg);
+//            int width = eleImage.getWidth();
+//            int height = eleImage.getHeight();
+//            int halfWidthImageView = width / 2;
+//            int halfHeightImageView = height / 2;
+
+//            float coordX = locationImg[0];
+//            float coordY = locationImg[1];
 
             for (ElementPos elementPos : elementPosArrayList) {
-                double ptrPosXRatio = elementPos.X / parentWidth;
-                double ptrPosYRatio = elementPos.Y / parentHeight;
-                elementPos.X = (float) ptrPosXRatio * mainLayout.getWidth();
-                elementPos.Y = (float) ptrPosYRatio * mainLayout.getHeight();
+                double ptrPosXRatio = elementPos.X / screenWidth;
+                double ptrPosYRatio = elementPos.Y / screenHeight;
+                elementPos.X = (float) ptrPosXRatio * DragAndDropMathApplication.screenWidth;
+                elementPos.Y = (float) ptrPosYRatio *DragAndDropMathApplication.screenHeight;
                 switch (elementPos.action) {
 
                     case MotionEvent.ACTION_DOWN: {
-                        //auto press down on the center of the image
                         instrumentation.sendPointerSync(
-                                MotionEvent.obtain(
+//                                MotionEvent.obtain(
+//                                        SystemClock.uptimeMillis(),
+//                                        SystemClock.uptimeMillis(),
+//                                        MotionEvent.ACTION_DOWN,
+//                                        locationImg[0] + halfWidthImageView,  //press would simulate center
+//                                        locationImg[1] + halfHeightImageView, // press would simulate center
+//                                        0));
+                        MotionEvent.obtain(
                                         SystemClock.uptimeMillis(),
-                                        SystemClock.uptimeMillis(),
+                                        SystemClock.uptimeMillis() + 1L,
                                         MotionEvent.ACTION_DOWN,
-                                        locationImg[0] + halfWidthImageView,  //press would simulate center
-                                        locationImg[1] + halfHeightImageView, // press would simulate center
+                                        elementPos.X,
+                                        elementPos.Y,
                                         0));
                     }
                     break;
                     case MotionEvent.ACTION_MOVE: {
-                        eventX += elementPos.X;
-                        eventY += elementPos.Y;
+
+//                        coordX += elementPos.X;
+//                        coordY += elementPos.Y;
                         MotionEvent.PointerProperties pointerProperties =
                                 new MotionEvent.PointerProperties();
                         MotionEvent.PointerProperties[] pproperties =
@@ -258,10 +282,11 @@ public class MainActivity extends AppCompatActivity {
                         MotionEvent.PointerCoords[] pcoords =
                                 new MotionEvent.PointerCoords[1];
 
-                        pointerCoords.x = eventX;
-                        pointerCoords.y = eventY;
+//                        pointerCoords.x = coordX;
+                        pointerCoords.x = elementPos.X;
+//                        pointerCoords.y = coordY;
+                        pointerCoords.y = elementPos.Y;
 
-                        pointerCoords.pressure = 1;
                         pointerCoords.size = 1;
                         pointerCoords.orientation = 0;
                         pointerCoords.toolMajor = 0;
@@ -297,8 +322,8 @@ public class MainActivity extends AppCompatActivity {
                                         SystemClock.uptimeMillis(),
                                         SystemClock.uptimeMillis(),
                                         MotionEvent.ACTION_UP,
-                                        eventX,
-                                        eventY,
+                                        elementPos.X,
+                                        elementPos.Y,
                                         0));
                         eleImage.setTag(null);
 
@@ -307,5 +332,21 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }).start();
+    }
+
+    private int getNavigationBarHeight(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            DisplayMetrics metrics = new DisplayMetrics();
+            WindowManager windowManager = (WindowManager)context.getSystemService(Context.WINDOW_SERVICE);
+            windowManager.getDefaultDisplay().getMetrics(metrics);
+            int usableHeight = metrics.heightPixels;
+            windowManager.getDefaultDisplay().getRealMetrics(metrics);
+            int realHeight = metrics.heightPixels;
+            if (realHeight > usableHeight)
+                return realHeight - usableHeight;
+            else
+                return 0;
+        }
+        return 0;
     }
 }

@@ -15,6 +15,8 @@ public class DragAndDropMathApplication {
     public static String APPLICATION_ID;
 //    public static boolean isRemoteMotionEvent;
     public static final String TAG = "ptasdevz";
+    public static int screenWidth;
+    public static int screenHeight;
 
     private static MathElementRemote elementRemote;
 
