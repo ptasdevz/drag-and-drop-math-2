@@ -1,68 +1,203 @@
 package com.ptasdevz.draganddropmath2;
 
-import android.view.MotionEvent;
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.Context;
+import android.util.Log;
 
-import androidx.constraintlayout.widget.ConstraintLayout;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.schedulers.Schedulers;
+import ua.naiksoftware.stomp.Stomp;
 import ua.naiksoftware.stomp.StompClient;
 
-import static android.view.MotionEvent.INVALID_POINTER_ID;
+import static com.ptasdevz.draganddropmath2.MathElement.APP_ID;
+import static com.ptasdevz.draganddropmath2.MathElement.ELE_NAME;
+import static com.ptasdevz.draganddropmath2.MathElement.ELE_POS_LIST;
+import static com.ptasdevz.draganddropmath2.MathElement.TRASH;
+import static com.ptasdevz.draganddropmath2.MathElement.eventQueue;
 
 public class DragAndDropMathApplication {
 
-    public static int mActivePointerId = INVALID_POINTER_ID;
+    public static final String TAG = "ptasdevz";
+    public static final String ENDPOINT_WEBSOCKET = "ws://192.168.137.1:8181/endpoint/websocket";
+    //public static final String ENDPOINT_WEBSOCKET = "ws://35.239.154.165:8181/endpoint/websocket";
+    public static final String TOPIC_PATH = "/topic/math-element-message";
     public static StompClient mStompClient;
     public static String APPLICATION_ID;
-//    public static boolean isRemoteMotionEvent;
-    public static final String TAG = "ptasdevz";
-    public static int screenWidth;
-    public static int screenHeight;
-
-    private static MathElementRemote elementRemote;
+    public static Object remoteEventAction = new Object();
+    private static  DragAndDropMathApplication instance;
+    private Gson gson = new Gson();
 
 
-    public static MathElementRemote getElementRemote() {
-        return elementRemote;
+    private DragAndDropMathApplication(){};
+
+    public static DragAndDropMathApplication getInstance(){
+        if (instance == null) instance = new DragAndDropMathApplication();
+        return instance;
     }
 
-    public static void actionMoveRemoteOptions1(MathElement mathEleOriginal, int pointerIndex,
-                                                float evX, float evY) {
+    @SuppressLint("CheckResult")
+    public void setupStompConnection() {
+        try {
+            DragAndDropMathApplication.mStompClient = Stomp.over(
+                    Stomp.ConnectionProvider.OKHTTP, ENDPOINT_WEBSOCKET);
+            DragAndDropMathApplication.mStompClient.connect();
+            DragAndDropMathApplication.mStompClient.topic(TOPIC_PATH)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(topicMessage -> {
+                        String payload = topicMessage.getPayload();
 
-        elementRemote.remoteAction = MotionEvent.ACTION_MOVE;
-        elementRemote.motionPositionX = evX;
-        elementRemote.motionPositionY = evY;
-        elementRemote.pointerIndex = pointerIndex;
-        elementRemote.name = mathEleOriginal.getName();
-        ConstraintLayout parent = (ConstraintLayout) mathEleOriginal.getEleImg().getParent();
-        elementRemote.parentWidth = parent.getWidth();
-        elementRemote.parentHeight = parent.getHeight();
+                        Type mapType = new TypeToken<HashMap<String, Object>>() {
+                        }.getType();
+                        HashMap<String, Object> remoteDataMap = gson.fromJson(payload, mapType);
+                        eventQueue.add(remoteDataMap);
+                        synchronized (remoteEventAction) {
+                            remoteEventAction.notify();
+                        }
 
-        String payload = MathElementRemote.toJsonString(elementRemote);
-//        Log.d(TAG, "onCreate: payload move " + payload);
-        mStompClient.send(MathElement.sendMathElementURI, payload).subscribe();
+                    }, throwable -> {
+                        Log.e(DragAndDropMathApplication.TAG, "Error on subscribe topic", throwable);
+                    });
+
+            DragAndDropMathApplication.mStompClient.lifecycle()
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(lifecycleEvent -> {
+                        switch (lifecycleEvent.getType()) {
+                            case OPENED:
+                                Log.d(DragAndDropMathApplication.TAG, "Stomp connection opened");
+                                break;
+                            case CLOSED:
+                                Log.d(DragAndDropMathApplication.TAG, "Stomp connection closed");
+                                break;
+                            case ERROR:
+                                Log.e(DragAndDropMathApplication.TAG, "Stomp connection error", lifecycleEvent.getException());
+                                break;
+                        }
+                    }, throwable -> {
+                        Log.e(DragAndDropMathApplication.TAG, "Error on subscribe lifecycle", throwable);
+                    });
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    public static void actionDownRemoteOptions1(MathElement mathEleOriginal, float evX, float evY) {
-
-        elementRemote.remoteAction = MotionEvent.ACTION_DOWN;
-        elementRemote.name = mathEleOriginal.getName();
-        elementRemote.appId = APPLICATION_ID;
-        elementRemote.motionPositionX = evX;
-        elementRemote.motionPositionY = evY;
-        ConstraintLayout parent = (ConstraintLayout) mathEleOriginal.getEleImg().getParent();
-        elementRemote.parentWidth = parent.getWidth();
-        elementRemote.parentHeight = parent.getHeight();
-
-        String payload = MathElementRemote.toJsonString(elementRemote);
-//        Log.d(TAG, "onCreate: payload down" + payload);
-        mStompClient.send(MathElement.sendMathElementURI, payload).subscribe();
+    public void setupRemoteMotion(Context context) {
+        Thread thread = new Thread(new MathEleMotionEvent(context));
+        thread.start();
     }
 
-    public static void actionUpRemoteOptions(MathElement mathEleOriginal) {
-        elementRemote.remoteAction = MotionEvent.ACTION_UP;
-        elementRemote.name = mathEleOriginal.getName();
-        String payload = MathElementRemote.toJsonString(elementRemote);
-        mStompClient.send(MathElement.sendMathElementURI, payload).subscribe();
-    }
+    //=====================================Inner Classes============================================
+    class MathEleMotionEvent implements Runnable {
+        protected Context context;
+        private Activity activity;
 
+
+        public MathEleMotionEvent(Context context) {
+            this.context = context;
+            this.activity = (Activity) context;
+        }
+
+        @Override
+        public void run() {
+            try {
+                Type elePosType = new TypeToken<ArrayList<EleActionPos>>() {
+                }.getType();
+
+                while (true) {
+
+                    HashMap<String, Object> eventReceived = eventQueue.poll();
+                    if (eventReceived != null) {
+                        String appId = (String) eventReceived.get(APP_ID);
+                        if (!DragAndDropMathApplication.APPLICATION_ID.equalsIgnoreCase(appId)) {
+
+                            String elementPosLisStr = (String) eventReceived.get(ELE_POS_LIST);
+
+                            ArrayList<EleActionPos> eleActionPosArrayList =
+                                    gson.fromJson(elementPosLisStr, elePosType);
+
+                            String eleName = (String) eventReceived.get(ELE_NAME);
+                            MathElement mathElement = MathElement.mathEleList.get(eleName);
+                            if (mathElement != null) {
+
+                                for (EleActionPos eleActionPos : eleActionPosArrayList) {
+                                    activity.runOnUiThread(new MathEleMotionEventActions(mathElement,
+                                            eleActionPos, eventReceived));
+                                }
+                            }
+                        }
+                    } else {
+                        synchronized (remoteEventAction) {
+                            remoteEventAction.wait();
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "run: remote event thread had an error: " + Log.getStackTraceString(e));
+            }
+        }
+    }
+    class MathEleMotionEventActions implements Runnable {
+
+
+        private final MathElement mathElement;
+        private final EleActionPos eleActionPos;
+        private final HashMap<String, Object> eventReceived;
+
+        public MathEleMotionEventActions(MathElement mathElement,
+                                         EleActionPos eleActionPos, HashMap<String, Object> eventReceived) {
+            this.mathElement = mathElement;
+            this.eleActionPos = eleActionPos;
+            this.eventReceived = eventReceived;
+        }
+
+        @Override
+        public void run() {
+            switch (eleActionPos.action) {
+                case MathElement.MotionEvent.PRESS_DOWN: {
+                }
+                break;
+                case MathElement.MotionEvent.MOVE_AROUND: {
+
+                    mathElement.actionRemoteMoveOptions();
+                    mathElement.positionMathEle(false, eleActionPos.hBias,
+                            eleActionPos.vBias);
+                }
+                break;
+                case MathElement.MotionEvent.LIFT_UP: {
+                    if (mathElement.getName().contains("COPY")
+                            || mathElement.getName().contains(TRASH)) {
+//                        mathElement.repositionElement();
+//                        mathElement.learnNeighbouringElements();
+                    } else {
+                        mathElement.actionUpOptions(eventReceived);
+                        mathElement.resetMathElePosition();
+                    }
+                }
+                break;
+                case MathElement.MotionEvent.SINGLE_CLICK: {
+
+                }
+                break;
+                case MathElement.MotionEvent.DOUBLE_CLICK: {
+                    String name = mathElement.getName();
+                    if (name.equalsIgnoreCase(TRASH)){
+                        mathElement.removeAllGeneratedElements();
+                    }
+                }
+                break;
+            }
+
+        }
+    }
 }

@@ -7,11 +7,11 @@ import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.util.Log;
 import android.util.SparseArray;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
 
@@ -22,22 +22,25 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static android.view.MotionEvent.INVALID_POINTER_ID;
 
 public class MathElement extends TutorMyPeerElement {
 
-    public static final String SCREEN_WIDTH = "screenWidth";
-    public static final String SCREEN_HEIGHT = "screenHeight";
-    public static final String ELE_NAME = "eleName";
-    public static HashMap<String, MathElement> mathEleList = new HashMap<>();
-    public static HashMap<String, Integer> MathElementsNameRes = new HashMap<>();
-    public static String sendMathElementURI = "/app/send-math-element-message";
-    public static ArrayList<ElementPos> elementPosArrayList = new ArrayList<>();
-    public static HashMap<String, Object> remoteDataToSend = new HashMap<>();
-    public static HashMap<String, Object> remoteDataRecieved = new HashMap<>();
-    public static int mActivePointerId = INVALID_POINTER_ID;
     public static final String TAG = "ptasdevz";
+    public static final String ELE_NAME = "eleName";
+    public static final String REMOTE_COPY_NAME = "remoteCopyName";
+    public static final String ELE_POS_LIST = "elePosList";
+    public static final String APP_ID = "appId";
+    public static HashMap<String, MathElement> mathEleList = new HashMap<>();
+    public static HashMap<String, Integer> mathEleNameRes = new HashMap<>();
+    public static String sendMathElementURI = "/app/send-math-element-message";
+    public static ArrayList<EleActionPos> eleActionPosList = new ArrayList<>();
+    public static HashMap<String, Object> eventToSend = new HashMap<>();
+    public static Queue<HashMap<String, Object>> eventQueue = new ConcurrentLinkedQueue<>();
+    public static int mActivePointerId = INVALID_POINTER_ID;
     public static String NUMBER_0 = "number0";
     public static String NUMBER_1 = "number1";
     public static String NUMBER_2 = "number2";
@@ -54,27 +57,26 @@ public class MathElement extends TutorMyPeerElement {
     public static String DIVIDE = "divide";
     public static String EQUAL = "equal";
     public static String TRASH = "trash";
+    private static final int DOUBLE_CLICK_TIME = 250; // double click timer
 
     static {
-        MathElementsNameRes.put(NUMBER_0, R.id.number0Img);
-        MathElementsNameRes.put(NUMBER_1, R.id.number1Img);
-        MathElementsNameRes.put(NUMBER_2, R.id.number2Img);
-        MathElementsNameRes.put(NUMBER_3, R.id.number3Img);
-        MathElementsNameRes.put(NUMBER_4, R.id.number4Img);
-        MathElementsNameRes.put(NUMBER_5, R.id.number5Img);
-        MathElementsNameRes.put(NUMBER_6, R.id.number6Img);
-        MathElementsNameRes.put(NUMBER_7, R.id.number7Img);
-        MathElementsNameRes.put(NUMBER_8, R.id.number8Img);
-        MathElementsNameRes.put(NUMBER_9, R.id.number9Img);
-        MathElementsNameRes.put(MINUS, R.id.minusImg);
-        MathElementsNameRes.put(PLUS, R.id.plusImg);
-        MathElementsNameRes.put(EQUAL, R.id.equalImg);
-        MathElementsNameRes.put(MULTIPLY, R.id.multiplyImg);
-        MathElementsNameRes.put(DIVIDE, R.id.divideImg);
-        MathElementsNameRes.put(TRASH, R.id.trash);
+        mathEleNameRes.put(NUMBER_0, R.id.number0Img);
+        mathEleNameRes.put(NUMBER_1, R.id.number1Img);
+        mathEleNameRes.put(NUMBER_2, R.id.number2Img);
+        mathEleNameRes.put(NUMBER_3, R.id.number3Img);
+        mathEleNameRes.put(NUMBER_4, R.id.number4Img);
+        mathEleNameRes.put(NUMBER_5, R.id.number5Img);
+        mathEleNameRes.put(NUMBER_6, R.id.number6Img);
+        mathEleNameRes.put(NUMBER_7, R.id.number7Img);
+        mathEleNameRes.put(NUMBER_8, R.id.number8Img);
+        mathEleNameRes.put(NUMBER_9, R.id.number9Img);
+        mathEleNameRes.put(MINUS, R.id.minusImg);
+        mathEleNameRes.put(PLUS, R.id.plusImg);
+        mathEleNameRes.put(EQUAL, R.id.equalImg);
+        mathEleNameRes.put(MULTIPLY, R.id.multiplyImg);
+        mathEleNameRes.put(DIVIDE, R.id.divideImg);
+        mathEleNameRes.put(TRASH, R.id.trash);
     }
-
-    private static final int DOUBLE_CLICK_TIME = 250; // double click timer
 
     protected ImageView eleImg;
     private ConstraintLayout mainLayout;
@@ -94,11 +96,13 @@ public class MathElement extends TutorMyPeerElement {
     private Context context;
     public int remoteAction;
     private boolean isDropped;
+    private float horizontalBias;
+    private float verticalBias;
 
     public MathElement(final Context context, ImageView eleImageView,
                        String eleName, int parentId,
                        ConstraintLayout workspaceLayout, ConstraintLayout mainLayout, boolean isCopy,
-                       boolean isAlsoRemote) {
+                       @Nullable HashMap<String, Object> mathEleEvent) {
 
         Drawable eleImgDrawable = eleImageView.getDrawable();
         float srcImgWidth = eleImgDrawable.getIntrinsicWidth();
@@ -107,28 +111,26 @@ public class MathElement extends TutorMyPeerElement {
         float elePosY = eleImageView.getY();
         eleImg = eleImageView;
         setupElement(context, eleImgDrawable, elePosX, elePosY, srcImgWidth, srcImgHeight, eleName,
-                parentId, workspaceLayout, mainLayout, isCopy, isAlsoRemote);
+                parentId, workspaceLayout, mainLayout, isCopy, mathEleEvent);
 
     }
 
     @SuppressLint("ClickableViewAccessibility")
     public MathElement(final Context context, Drawable eleImgDrawable, float elePosX, float elePosY,
                        float srcImgWidth, float srcImgHeight, String eleName, int parentId,
-                       ConstraintLayout workspaceLayout, ConstraintLayout mainLayout, boolean isCopy, boolean isAlsoRemote) {
+                       ConstraintLayout workspaceLayout, ConstraintLayout mainLayout, boolean isCopy,
+                       @Nullable HashMap<String, Object> mathEleEvent) {
         setupElement(context, eleImgDrawable, elePosX, elePosY, srcImgWidth, srcImgHeight, eleName,
-                parentId, workspaceLayout, mainLayout, isCopy, isAlsoRemote);
+                parentId, workspaceLayout, mainLayout, isCopy, mathEleEvent);
     }
 
+    //====================================Getters & Setters=========================================
     public ImageView getEleImg() {
         return eleImg;
     }
 
     public static HashMap<String, MathElement> getMathEleList() {
         return mathEleList;
-    }
-
-    public ConstraintLayout getMainLayout() {
-        return mainLayout;
     }
 
     public MathElement getFocusedMathEle(int pos) {
@@ -146,6 +148,7 @@ public class MathElement extends TutorMyPeerElement {
     public float getLastPtrPosX() {
         return lastPtrPosX;
     }
+
 
     public void setLastPtrPosX(float lastPtrPosX) {
         this.lastPtrPosX = lastPtrPosX;
@@ -216,15 +219,12 @@ public class MathElement extends TutorMyPeerElement {
         this.dropPosY = dropPosY;
     }
 
-    public boolean isDropped() {
-        return isDropped;
-    }
-
     @Override
     public String toString() {
         return "MathElement{" +
                 "eleImg=" + eleImg +
                 ", mainLayout=" + mainLayout +
+                ", workspaceLayout=" + workspaceLayout +
                 ", neighbouringMathEleList=" + neighbouringMathEleList +
                 ", id=" + id +
                 ", waitDouble=" + waitDouble +
@@ -240,6 +240,9 @@ public class MathElement extends TutorMyPeerElement {
                 ", context=" + context +
                 ", remoteAction=" + remoteAction +
                 ", isDropped=" + isDropped +
+                ", horizontalBias=" + horizontalBias +
+                ", verticalBias=" + verticalBias +
+                ", appId='" + appId + '\'' +
                 '}';
     }
 
@@ -258,26 +261,32 @@ public class MathElement extends TutorMyPeerElement {
     public int hashCode() {
         return (int) id;
     }
+    //===================================End of Getters & Setters===================================
 
     //=========================================Helpers==============================================
     @SuppressLint("ClickableViewAccessibility")
     private void setupElement(Context context, Drawable eleImgDrawable, float elePosX, float elePosY,
                               float srcImgWidth, float srcImgHeight, String eleName, int parentId,
                               ConstraintLayout workspaceLayout, ConstraintLayout mainLayout,
-                              boolean isCopy, boolean isAlsoRemote) {
+                              boolean isCopy, @Nullable HashMap<String, Object> mathEleEvent) {
         this.context = context;
+
         if (isCopy) {
             eleImg = new ImageView(this.context);
-            if (isAlsoRemote) {
-                eleName = eleName + "_COPY_" + parentId + "_" + getUniqueId();
-                remoteDataToSend.put("remoteCopyName", eleName); // used for renaming elements created remotely
+            if (mathEleEvent != null) {
+                String eleNameCopy = (String) mathEleEvent.get(REMOTE_COPY_NAME);
+                if (eleNameCopy != null) eleName = eleNameCopy;
+                else try {
+                    throw new Exception("remote copy name is missing from remote data");
+                } catch (Exception e) {
+                    Log.e(TAG, "setupElement: error: " + Log.getStackTraceString(e));
+                }
             } else {
-                String eleNameCopy = (String) remoteDataRecieved.get("remoteCopyName");
-                eleName = eleNameCopy;
+                eleName = eleName + "_COPY_" + parentId + "_" + getUniqueId();
+                eventToSend.put(REMOTE_COPY_NAME, eleName); // used for renaming elements created remotely
             }
             eleImg.setTag(eleName);
         }
-
         eleImg.setBackground(context.getDrawable(R.drawable.custom_border));
         eleImg.setImageDrawable(eleImgDrawable);
         eleImg.setMaxHeight((int) srcImgHeight);
@@ -322,17 +331,9 @@ public class MathElement extends TutorMyPeerElement {
                 }
 
                 private void doubleClick() {
-                    Iterator iterator = getMathEleList().entrySet().iterator();
-                    while (iterator.hasNext()) {
-                        HashMap.Entry<String, MathElement>
-                                element = (HashMap.Entry<String, MathElement>) iterator.next();
-                        String elementKey = element.getKey();
-                        if (elementKey.contains("COPY")) {
-                            MathElement mathElement = element.getValue();
-                            MathElement.this.workspaceLayout.removeView(mathElement.getEleImg());
-                            iterator.remove();
-                        }
-                    }
+                    removeAllGeneratedElements();
+                    saveElementPos(MotionEvent.DOUBLE_CLICK);
+                    sendElementPosData();
                 }
             });
         }
@@ -340,69 +341,57 @@ public class MathElement extends TutorMyPeerElement {
         //setup drag and drop options on image
         eleImg.setOnTouchListener((view, motionEvent) -> {
 
-            boolean isRemoteEvent = "remote".equalsIgnoreCase((String) view.getTag());
-//            boolean isRemoteEvent = motionEvent.getPressure() == 0;
 
             switch (motionEvent.getAction()) {
-                case MotionEvent.ACTION_DOWN: {
-                    mActivePointerId =
-                            motionEvent.getPointerId(0);
-                    float evY = motionEvent.getY(motionEvent.getActionIndex());
-                    float evX = motionEvent.getX(motionEvent.getActionIndex());
-                    actionDownLocalOptions(this, evX, evY);
-//                    if (!isRemoteEvent) saveElementPos(0, 0,
-//                            MotionEvent.ACTION_DOWN, this, false);
-                    if (!isRemoteEvent) saveElementPos(motionEvent.getRawX(), motionEvent.getRawY(),
-                            MotionEvent.ACTION_DOWN, this, false);
-
-                }
-
-                break;
-                case MotionEvent.ACTION_MOVE: {
+                case android.view.MotionEvent.ACTION_DOWN: {
+                    mActivePointerId = motionEvent.getPointerId(0);
                     int pointerIndex = motionEvent.findPointerIndex(mActivePointerId);
-                    float movingPtrPosX = motionEvent.getX(pointerIndex);
-                    float movingPtrPosY = motionEvent.getY(pointerIndex);
-                    actionMoveLocalOptions(this, pointerIndex, movingPtrPosX, movingPtrPosY);
-                    this.positionMathEle(false);
-//                    if (!isRemoteEvent) saveElementPos(this.getChangeOfPosX(), this.getChangeOfPosY(),
-//                                MotionEvent.ACTION_MOVE, this, false);
-                    if (!isRemoteEvent) saveElementPos(motionEvent.getRawX(), motionEvent.getRawY(),
-                                MotionEvent.ACTION_MOVE, this, false);
+                    if (pointerIndex > -1) {
+                        float evY = motionEvent.getY(pointerIndex);
+                        float evX = motionEvent.getX(pointerIndex);
+                        actionDownOptions(evX, evY);
+                        saveElementPos(android.view.MotionEvent.ACTION_DOWN);
+                        sendElementPosData();
+                    }
+
+                }
+
+                break;
+                case android.view.MotionEvent.ACTION_MOVE: {
+                    int pointerIndex = motionEvent.findPointerIndex(mActivePointerId);
+                    if (pointerIndex > -1) {
+                        Log.d(TAG, "setupElement: pointId:" + mActivePointerId);
+                        Log.d(TAG, "setupElement: pointIndex:" + pointerIndex);
+                        float movingPtrPosX = motionEvent.getX(pointerIndex);
+                        float movingPtrPosY = motionEvent.getY(pointerIndex);
+                        actionMoveLocalOptions(this, movingPtrPosX, movingPtrPosY);
+                        this.positionMathEle(false);
+                        saveElementPos(android.view.MotionEvent.ACTION_MOVE);
+                        sendElementPosData();
+                    }
                 }
                 break;
-                case MotionEvent.ACTION_UP: {
+                case android.view.MotionEvent.ACTION_UP: {
                     if (isCopy || name.equalsIgnoreCase(TRASH)) {
                         resetFocusedMathEleList();
                         repositionElement();
                         learnNeighbouringElements();
-                    }else {
-                        actionUpLocalOptionsEleOriginal(isRemoteEvent);
+                    } else {
+                        actionUpOptions(null);
                         resetMathElePosition();
-                        saveElementPos(motionEvent.getRawX(), motionEvent.getRawY(), MotionEvent.ACTION_UP, this,
-                                isRemoteEvent);
-
-                        //send math element position data remotely
-                        if (!isRemoteEvent) sendElementPosData();
                     }
-                    if (name.equalsIgnoreCase(TRASH))view.performClick(); //enable click functions as well on element
+                    Log.d(TAG, "setupElement: fasf");
+                    saveElementPos(android.view.MotionEvent.ACTION_UP);
+                    sendElementPosData();
+
+
+                    if (name.equalsIgnoreCase(TRASH))
+                        view.performClick(); //enable click functions as well on element
                 }
                 break;
-                case MotionEvent.ACTION_CANCEL: {
+                case android.view.MotionEvent.ACTION_CANCEL: {
                     mActivePointerId = INVALID_POINTER_ID;
-                    elementPosArrayList.clear();
-                }
-                break;
-                case MotionEvent.ACTION_POINTER_UP: {
-
-                    final int pointerIndex = motionEvent.getActionIndex();
-                    final int pointerId = motionEvent.getPointerId(pointerIndex);
-                    if (pointerId == mActivePointerId) {
-                        // This was our active pointer going up. Choose a new
-                        // active pointer and adjust accordingly.
-                        //final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
-
-                        //this.resetMathElePosition();
-                    }
+                    eleActionPosList.clear();
                 }
                 break;
             }
@@ -420,10 +409,24 @@ public class MathElement extends TutorMyPeerElement {
         this.workspaceLayout = workspaceLayout;
         neighbouringMathEleList = new SparseArray<>();
         id = getUniqueId();
-        mathEleList.put(name,this);
+        mathEleList.put(name, this);
     }
 
-    public MathElement dropElement(boolean isAlsoRemote) {
+    public void removeAllGeneratedElements() {
+        Iterator iterator = getMathEleList().entrySet().iterator();
+        while (iterator.hasNext()) {
+            HashMap.Entry<String, MathElement>
+                    element = (HashMap.Entry<String, MathElement>) iterator.next();
+            String elementKey = element.getKey();
+            if (elementKey.contains("COPY")) {
+                MathElement mathElement = element.getValue();
+                MathElement.this.workspaceLayout.removeView(mathElement.getEleImg());
+                iterator.remove();
+            }
+        }
+    }
+
+    public MathElement dropElement(@Nullable HashMap<String, Object> eventReceived) {
         float x = this.getDropPosX();
         float y = this.getDropPosY();
 
@@ -434,7 +437,7 @@ public class MathElement extends TutorMyPeerElement {
 
         if (!name.contains("COPY")) { //drop copy
 
-            mathEleCopy = getMathEleCopy(x, y, isAlsoRemote);
+            mathEleCopy = getMathEleCopy(x, y, eventReceived);
             eleImg = mathEleCopy.getEleImg();
             this.workspaceLayout.addView(eleImg);
             this.rePositionMathEle(mathEleCopy, x, y);
@@ -500,6 +503,15 @@ public class MathElement extends TutorMyPeerElement {
      */
     public void positionMathEle(boolean isRevert) {
 
+        positionMathEleHelper(isRevert, null, null);
+    }
+
+    public void positionMathEle(boolean isRevert, Float horizontalBias, Float verticalBias) {
+
+        positionMathEleHelper(isRevert, horizontalBias, verticalBias);
+    }
+
+    private void positionMathEleHelper(boolean isRevert, Float horizontalBias, Float verticalBias) {
         View view = this.eleImg;
         float dx, dy;
         if (isRevert) {
@@ -530,30 +542,33 @@ public class MathElement extends TutorMyPeerElement {
         int layoutConstraintWidth = layout.getWidth() - view.getWidth();
         int layoutConstraintHeight = layout.getHeight() - view.getHeight();
 
-        float horizontalBias = (dx + view.getX()) / layoutConstraintWidth;
+        if (horizontalBias == null)
+            this.horizontalBias = (dx + view.getX()) / layoutConstraintWidth;
+        else this.horizontalBias = horizontalBias;
 
         //place view horizontal bias at the minimum or maximum of the constraint
-        if (horizontalBias < 0) {
-            horizontalBias = 0;
-        } else if (horizontalBias > 1) {
-            horizontalBias = 1;
+        if (this.horizontalBias < 0) {
+            this.horizontalBias = 0;
+        } else if (this.horizontalBias > 1) {
+            this.horizontalBias = 1;
         }
-        constraintSet.setHorizontalBias(view.getId(), horizontalBias);
+        constraintSet.setHorizontalBias(view.getId(), this.horizontalBias);
 
-        float verticalBias = (dy + view.getY()) / layoutConstraintHeight;
+        if (verticalBias == null) this.verticalBias = (dy + view.getY()) / layoutConstraintHeight;
+        else this.verticalBias = verticalBias;
+
         //place view vertical bias at the minimum or maximum of the constraint
-        if (verticalBias < 0) {
-            verticalBias = 0;
-        } else if (verticalBias > 1) {
-            verticalBias = 1;
+        if (this.verticalBias < 0) {
+            this.verticalBias = 0;
+        } else if (this.verticalBias > 1) {
+            this.verticalBias = 1;
         }
-        constraintSet.setVerticalBias(view.getId(), verticalBias);
+        constraintSet.setVerticalBias(view.getId(), this.verticalBias);
 
         constraintSet.applyTo(layout);
     }
 
     public void resetMathElePosition() {
-
 
         positionMathEle(true);
     }
@@ -666,69 +681,68 @@ public class MathElement extends TutorMyPeerElement {
         this.isDropped = true;
     }
 
-    public static void actionDownLocalOptions(MathElement mathElement, float motionEventX,
-                                              float motionEventY) {
+    public void actionDownOptions(float motionEventX, float motionEventY) {
         // Remember where we started (for dragging)
-        mathElement.setLastPtrPosX(motionEventX);
-        mathElement.setLastPtrPosY(motionEventY);
+        this.setLastPtrPosX(motionEventX);
+        this.setLastPtrPosY(motionEventY);
 
         // Save initial element position with respect to element's parent
-        mathElement.setInitialElePosX(mathElement.getEleImg().getX());
-        mathElement.setInitialElePosY(mathElement.getEleImg().getY());
-
+//        this.setInitialElePosX(this.eleImg.getX());
+//        this.setInitialElePosY(this.eleImg.getY());
     }
-    public static void actionMoveLocalOptions(MathElement mathElement, final int pointerIndex,
-                                              final float movingPtrPosX, final float movingPtrPosY) {
-        if (pointerIndex != -1) {
-            //calculate change of distance from lastPtrPos
-            final float dx = movingPtrPosX - mathElement.getLastPtrPosX();
-            final float dy = movingPtrPosY - mathElement.getLastPtrPosY();
-            ImageView view = mathElement.getEleImg();
 
-            //calculate  the future lastPtrPosX and lastPtrPosY of view
-            float futurePosYdown = dy + view.getY() + view.getHeight();
-            float futurePosYup = dy + view.getY();
-            float futurePosXright = dx + view.getX() + view.getWidth();
-            float futurePosXleft = dx + view.getX();
+    public static void actionMoveLocalOptions(MathElement mathElement,
+                                              final float movingPtrPosX, final float movingPtrPosY) {
+        //calculate change of distance from lastPtrPos
+        final float dx = movingPtrPosX - mathElement.getLastPtrPosX();
+        final float dy = movingPtrPosY - mathElement.getLastPtrPosY();
+        ImageView view = mathElement.getEleImg();
+
+        //calculate  the future lastPtrPosX and lastPtrPosY of view
+        float futurePosYdown = dy + view.getY() + view.getHeight();
+        float futurePosYup = dy + view.getY();
+        float futurePosXright = dx + view.getX() + view.getWidth();
+        float futurePosXleft = dx + view.getX();
 
         /*
         only update if view position remains within the limits of the layout which is known
         from the future values.
         */
-            ConstraintLayout parent = (ConstraintLayout) view.getParent();
+        ConstraintLayout parent = (ConstraintLayout) view.getParent();
 
-            if (futurePosYdown < parent.getHeight() && futurePosYup > 0) {
-                mathElement.setChangeOfPosY(mathElement.getChangeOfPosY() + dy);
-                mathElement.setLastPtrPosY(movingPtrPosY);// Remember this touch position for the next move event
-            }
-            if (futurePosXright < parent.getWidth() && futurePosXleft > 0) {
-
-                mathElement.setChangeOfPosX(mathElement.getChangeOfPosX() + dx);
-                mathElement.setLastPtrPosX(movingPtrPosX);// Remember this touch position for the next move event
-            }
-
-            view.bringToFront();
-
+        if (futurePosYdown < parent.getHeight() && futurePosYup > 0) {
+            mathElement.setChangeOfPosY(mathElement.getChangeOfPosY() + dy);
+            mathElement.setLastPtrPosY(movingPtrPosY);// Remember this touch position for the next move event
         }
+        if (futurePosXright < parent.getWidth() && futurePosXleft > 0) {
+
+            mathElement.setChangeOfPosX(mathElement.getChangeOfPosX() + dx);
+            mathElement.setLastPtrPosX(movingPtrPosX);// Remember this touch position for the next move event
+        }
+
+        view.bringToFront();
+
 
     }
 
-    public static void saveElementPos(float dx, float dy, int action, MathElement mathElement,
-                                      boolean isRemoteEvent) {
-        if (!isRemoteEvent) {
-            ElementPos elementPos = new ElementPos();
-            elementPos.action = action;
-            elementPos.X = dx;
-            elementPos.Y = dy;
-//            ConstraintLayout parent = (ConstraintLayout) mathElement.getEleImg().getParent();
-            remoteDataToSend.put(SCREEN_WIDTH, DragAndDropMathApplication.screenWidth);
-            remoteDataToSend.put(SCREEN_HEIGHT, DragAndDropMathApplication.screenHeight);
-            remoteDataToSend.put(ELE_NAME, mathElement.getName());
-            elementPosArrayList.add(elementPos);
-        }
+    public void actionRemoteMoveOptions() {
+
+        this.eleImg.bringToFront();
+
     }
 
-    private void actionUpLocalOptionsEleOriginal(boolean isRemoteEvent) {
+    public void saveElementPos(int action) {
+
+        EleActionPos eleActionPos = new EleActionPos();
+        eleActionPos.hBias = this.horizontalBias;
+        eleActionPos.vBias = this.verticalBias;
+        eleActionPos.action = action;
+        eventToSend.put(ELE_NAME, this.name);
+        eleActionPosList.add(eleActionPos);
+
+    }
+
+    public void actionUpOptions(@Nullable HashMap<String, Object> eventReceived) {
         int x = (int) eleImg.getX();
         int y = (int) eleImg.getY();
         Rect workspaceBounds = new Rect();
@@ -747,7 +761,7 @@ public class MathElement extends TutorMyPeerElement {
             this.setDropPosX(viewXConverted + eleImg.getWidth() / 2);
             this.setDropPosY(viewYConverted + eleImg.getHeight() / 2);
             //place math element within workspaceLayout
-            MathElement mathEleCopy = dropElement(!isRemoteEvent);
+            MathElement mathEleCopy = dropElement(eventReceived);
 
             if (mathEleCopy != null) {
                 mathEleCopy.repositionElement();
@@ -758,20 +772,21 @@ public class MathElement extends TutorMyPeerElement {
 
     public static void sendElementPosData() {
         Gson gson = new Gson();
-        String ptrPosArrayListString = gson.toJson(elementPosArrayList,
-                new TypeToken<ArrayList<ElementPos>>() {
+        String elePosList = gson.toJson(eleActionPosList,
+                new TypeToken<ArrayList<EleActionPos>>() {
                 }.getType());
-        remoteDataToSend.put("ptrPosList", ptrPosArrayListString);
-        remoteDataToSend.put("appId", DragAndDropMathApplication.APPLICATION_ID);
+        eventToSend.put(ELE_POS_LIST, elePosList);
+        eventToSend.put(APP_ID, DragAndDropMathApplication.APPLICATION_ID);
 
-        String remoteDataString = gson.toJson(remoteDataToSend,
-                new TypeToken<HashMap<String, Object>>() {}.getRawType());
+        String remoteDataString = gson.toJson(eventToSend,
+                new TypeToken<HashMap<String, Object>>() {
+                }.getRawType());
 
         DragAndDropMathApplication.mStompClient.send(sendMathElementURI, remoteDataString).subscribe();
-        elementPosArrayList.clear();
+        eleActionPosList.clear();
     }
 
-    private MathElement getMathEleCopy(float x, float y, boolean isAlsoRemote) {
+    private MathElement getMathEleCopy(float x, float y, @Nullable HashMap<String, Object> eventReceived) {
 
         Drawable drawable = eleImg.getDrawable();
         int width = drawable.getIntrinsicWidth();
@@ -779,8 +794,7 @@ public class MathElement extends TutorMyPeerElement {
 
         MathElement mathElement = MathElementFactory.getNewInstance(context, drawable, x, y,
                 (float) width, (float) height, this.name, this.mainLayout.getId(), this.workspaceLayout,
-                this.mainLayout, true, isAlsoRemote);
-        mathEleList.put(mathElement.getName(), mathElement);
+                this.mainLayout, true, eventReceived);
         return mathElement;
     }
 
@@ -789,7 +803,7 @@ public class MathElement extends TutorMyPeerElement {
         mathEleList.remove(this.name);
     }
 
-    private void resetFocusedMathEleList() {
+    public void resetFocusedMathEleList() {
         int size = neighbouringMathEleList.size();
 
         for (int i = 0; i < size; i++) {
@@ -1058,4 +1072,17 @@ public class MathElement extends TutorMyPeerElement {
         }
         return new Timestamp(System.nanoTime()).getTime();
     }
+    //========================================End of Helpers========================================
+
+    //=====================================Inner Classes============================================
+    class MotionEvent {
+
+        public static final int PRESS_DOWN = 0;
+        public static final int LIFT_UP = 1;
+        public static final int MOVE_AROUND = 2;
+        public static final int DOUBLE_CLICK = 3;
+        public static final int SINGLE_CLICK = 4;
+
+    }
+    //=====================================End of Inner Classes============================================
 }
