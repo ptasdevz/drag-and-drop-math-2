@@ -1,12 +1,16 @@
 package com.ptasdevz.draganddropmath2;
 
 import android.annotation.SuppressLint;
+import android.content.ClipData;
+import android.content.ClipDescription;
 import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.util.Log;
 import android.util.SparseArray;
+import android.view.DragEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -292,6 +296,7 @@ public class MathElement extends TutorMyPeerElement {
         eleImg.setMaxHeight((int) srcImgHeight);
         eleImg.setMaxWidth((int) srcImgWidth);
         this.name = eleName;
+        eleImg.setTag(name);
 
         //set up click options for trash element
         if (eleName.equalsIgnoreCase(TRASH)) {
@@ -339,6 +344,7 @@ public class MathElement extends TutorMyPeerElement {
         }
 
         //setup drag and drop options on image
+        /*
         eleImg.setOnTouchListener((view, motionEvent) -> {
 
 
@@ -397,6 +403,42 @@ public class MathElement extends TutorMyPeerElement {
             }
             return true;
         });
+
+         */
+        eleImg.setOnTouchListener((v,event)->{
+            setUpDragOptions();
+            return true;
+        });
+        /*
+        eleImg.setOnDragListener((v, event) -> {
+
+            int action = event.getAction();
+            switch (action) {
+                case DragEvent.ACTION_DRAG_STARTED:
+                    Log.d(TAG, "Drag Started for element "+name);
+                    return true;
+                case DragEvent.ACTION_DRAG_ENTERED: {
+                    Log.d(TAG, "Drag entered for element "+ name);
+                }
+                return true;
+                case DragEvent.ACTION_DRAG_LOCATION:
+                    Log.d(TAG,"Drag Location for element "+ name);
+                    return true;
+                case DragEvent.ACTION_DRAG_EXITED:
+                     Log.d(TAG,"Drag exited for element "+ name);
+                    return true;
+                case DragEvent.ACTION_DROP:
+                    Log.d(MainActivity.TAG, "dropped element for element "+name);
+                    return true;
+                case DragEvent.ACTION_DRAG_ENDED: {
+                    Log.d(MainActivity.TAG, "touch is released for elemenmt "+name);
+                }
+                return true;
+            }
+            return false;
+        });
+
+         */
 
         eleImg.setLeft((int) elePosX);
         eleImg.setTop((int) elePosY);
@@ -1071,6 +1113,18 @@ public class MathElement extends TutorMyPeerElement {
         } catch (InterruptedException e) {
         }
         return new Timestamp(System.nanoTime()).getTime();
+    }
+
+    private void setUpDragOptions() {
+
+//        ClipData.Item item = new ClipData.Item((CharSequence) mathElement.getTag());
+
+
+//        ClipData clipData = new ClipData((CharSequence) mathElement.getTag()
+//                , new String[]{ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
+        ClipData clipData = ClipData.newPlainText("","");
+        View.DragShadowBuilder dragShadowBuilder = new View.DragShadowBuilder(this.eleImg);
+        this.eleImg.startDragAndDrop(clipData, dragShadowBuilder, this, 0);
     }
     //========================================End of Helpers========================================
 
