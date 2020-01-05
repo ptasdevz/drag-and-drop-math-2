@@ -5,7 +5,6 @@ import android.graphics.drawable.Drawable;
 import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
-import androidx.constraintlayout.widget.ConstraintLayout;
 
 import java.util.HashMap;
 
@@ -19,15 +18,17 @@ public class MathElementFactory {
     public static MathElement getNewInstance(Context context, Drawable drawable,
                                              Float elePosX, Float elePosY, Float srcImgWidth,
                                              Float srcImgHeight, String eleName, int parentId,
-                                             ConstraintLayout workspaceLayout, ConstraintLayout mainLayout,
-                                             boolean isCopy,@Nullable HashMap<String, Object> remoteData) {
+                                             MathElementConstraintLayout workspaceLayout,
+                                             MathElementConstraintLayout mainLayout,
+                                             boolean isCopy, @Nullable HashMap<String, Object> remoteData) {
         return  new MathElement(context,drawable,elePosX,elePosY,srcImgWidth,srcImgHeight,
                 eleName,parentId, workspaceLayout, mainLayout,isCopy, remoteData);
     }
 
     public static MathElement getNewInstance(Context context, ImageView imageView,
                                              String eleName, int parentId,
-                                             ConstraintLayout workspaceLayout, ConstraintLayout mainLayout,
+                                             MathElementConstraintLayout workspaceLayout,
+                                             MathElementConstraintLayout mainLayout,
                                              boolean isCopy, @Nullable HashMap<String, Object> mathEleEvent) {
 
         return  new MathElement(context,imageView, eleName,parentId,

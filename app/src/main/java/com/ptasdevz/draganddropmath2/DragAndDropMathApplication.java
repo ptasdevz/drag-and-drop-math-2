@@ -164,32 +164,32 @@ public class DragAndDropMathApplication {
         @Override
         public void run() {
             switch (eleActionPos.action) {
-                case MathElement.MotionEvent.PRESS_DOWN: {
+                case MathElement.MathMotionEvent.PRESS_DOWN: {
                 }
                 break;
-                case MathElement.MotionEvent.MOVE_AROUND: {
+                case MathElement.MathMotionEvent.MOVE_AROUND: {
 
                     mathElement.actionRemoteMoveOptions();
                     mathElement.positionMathEle(false, eleActionPos.hBias,
                             eleActionPos.vBias);
                 }
                 break;
-                case MathElement.MotionEvent.LIFT_UP: {
+                case MathElement.MathMotionEvent.LIFT_UP: {
                     if (mathElement.getName().contains("COPY")
                             || mathElement.getName().contains(TRASH)) {
 //                        mathElement.repositionElement();
 //                        mathElement.learnNeighbouringElements();
                     } else {
-                        mathElement.actionUpOptions(eventReceived);
+                        mathElement.actionUpOptions(eventReceived, mathElement.getEleImg());
                         mathElement.resetMathElePosition();
                     }
                 }
                 break;
-                case MathElement.MotionEvent.SINGLE_CLICK: {
+                case MathElement.MathMotionEvent.SINGLE_CLICK: {
 
                 }
                 break;
-                case MathElement.MotionEvent.DOUBLE_CLICK: {
+                case MathElement.MathMotionEvent.DOUBLE_CLICK: {
                     String name = mathElement.getName();
                     if (name.equalsIgnoreCase(TRASH)){
                         mathElement.removeAllGeneratedElements();
