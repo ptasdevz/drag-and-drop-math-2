@@ -3,9 +3,7 @@ package com.ptasdevz.draganddropmath2;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.widget.ImageView;
-
 import androidx.annotation.Nullable;
-
 import java.util.HashMap;
 
 /**

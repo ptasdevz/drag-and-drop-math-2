@@ -27,7 +27,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-//        askPermission();
         DragAndDropMathApplication.APPLICATION_ID = Installation.id(MainActivity.this);
         DragAndDropMathApplication.getInstance().setupStompConnection();
 
@@ -37,20 +36,10 @@ public class MainActivity extends AppCompatActivity {
         MathElement.setMainLayout(mainLayout);
         MathElement.setWorkspaceLayout(workspaceLayout);
         MathElement.setupCallBackOnWorkspace();
-        workspaceLayout.post(new Runnable() {
-            @Override
-            public void run() {
-                int[] coor = new int[2];
-                workspaceLayout.getLocationOnScreen(coor);
-                Log.d(TAG, "run: workspace absX:"+ coor[0] + " absY: "+ coor[1]);
-            }
-        });
 
         DragAndDropMathApplication.getInstance().setupRemoteMotion(this);
 
-
         //Set up all maths elements with drag and drop capabilities.
-
         for (HashMap.Entry<String, Integer> entry : mathEleNameRes.entrySet()) {
 
             String name = entry.getKey();
@@ -65,8 +54,8 @@ public class MainActivity extends AppCompatActivity {
             mathEleSrcImg.post(() -> {
                 mathElement.setInitialElePosX(mathEleSrcImg.getX());
                 mathElement.setInitialElePosY(mathEleSrcImg.getY());
-            });
 
+            });
         }
     }
 

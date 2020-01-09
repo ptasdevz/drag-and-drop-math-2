@@ -34,7 +34,7 @@ public class MathElementConstraintLayout extends ConstraintLayout {
     public interface OnShadowDragListener {
         // These methods are the different events and
         // need to pass relevant arguments related to the event triggered
-        boolean onShadowDrag(View view, ShadowDragEvent shadowDragEvent);
+        void onShadowDrag(View view, ShadowDragEvent shadowDragEvent);
     }
 
     // Step 2 - This variable represents a listener which is passed in by the owning object
@@ -114,10 +114,6 @@ public class MathElementConstraintLayout extends ConstraintLayout {
         float shadowRawX = shadowDragEvent.getX();
         float shadowRawY = shadowDragEvent.getY();
         boolean isDispatchEvent;
-
-//        Log.d(TAG, "dispatchShadowDragEvent: vrx:"+viewRawX + " vry:"+viewRawY + " srx:"
-//                +shadowRawX + " sry:"+shadowRawY + " stbh:"+statusHeight);
-
         switch (shadowDragEvent.getAction()) {
             case MathElement.MathMotionEvent.PRESS_DOWN:
                 shadowDragEvent.setAction(DragEvent.ACTION_DRAG_STARTED);
@@ -139,7 +135,7 @@ public class MathElementConstraintLayout extends ConstraintLayout {
                 } else if (hasEntered) {
                     shadowDragEvent.setAction(DragEvent.ACTION_DRAG_LOCATION);
                     isDispatchEvent = true;
-                } else isDispatchEvent = false;
+                } else  isDispatchEvent = false;
 
                 if (isDispatchEvent && hasEntered)
                     covertPositionRelativeToView(shadowDragEvent, viewRawX, viewRawY, shadowRawX,

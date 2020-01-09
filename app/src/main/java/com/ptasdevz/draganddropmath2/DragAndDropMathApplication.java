@@ -5,6 +5,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.constraintlayout.widget.ConstraintLayout;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -26,19 +28,18 @@ import static com.ptasdevz.draganddropmath2.MathElement.eventQueue;
 public class DragAndDropMathApplication {
 
     public static final String TAG = "ptasdevz";
-    public static final String ENDPOINT_WEBSOCKET = "ws://192.168.137.1:8181/endpoint/websocket";
-    //public static final String ENDPOINT_WEBSOCKET = "ws://35.239.154.165:8181/endpoint/websocket";
+//    public static final String ENDPOINT_WEBSOCKET = "ws://192.168.137.1:8181/endpoint/websocket";
+    public static final String ENDPOINT_WEBSOCKET = "ws://35.239.154.165:8181/endpoint/websocket";
     public static final String TOPIC_PATH = "/topic/math-element-message";
     public static StompClient mStompClient;
     public static String APPLICATION_ID;
     public static Object remoteEventAction = new Object();
-    private static  DragAndDropMathApplication instance;
+    private static DragAndDropMathApplication instance;
     private Gson gson = new Gson();
 
+    private DragAndDropMathApplication() { }
 
-    private DragAndDropMathApplication(){};
-
-    public static DragAndDropMathApplication getInstance(){
+    public static DragAndDropMathApplication getInstance() {
         if (instance == null) instance = new DragAndDropMathApplication();
         return instance;
     }
@@ -79,11 +80,13 @@ public class DragAndDropMathApplication {
                                 Log.d(DragAndDropMathApplication.TAG, "Stomp connection closed");
                                 break;
                             case ERROR:
-                                Log.e(DragAndDropMathApplication.TAG, "Stomp connection error", lifecycleEvent.getException());
+                                Log.e(DragAndDropMathApplication.TAG, "Stomp connection error",
+                                        lifecycleEvent.getException());
                                 break;
                         }
                     }, throwable -> {
-                        Log.e(DragAndDropMathApplication.TAG, "Error on subscribe lifecycle", throwable);
+                        Log.e(DragAndDropMathApplication.TAG, "Error on subscribe lifecycle",
+                                throwable);
                     });
 
 
@@ -147,6 +150,7 @@ public class DragAndDropMathApplication {
             }
         }
     }
+
     class MathEleMotionEventActions implements Runnable {
 
 
@@ -163,26 +167,41 @@ public class DragAndDropMathApplication {
 
         @Override
         public void run() {
+//            mathElement.isRemoteExecution = true;
             switch (eleActionPos.action) {
                 case MathElement.MathMotionEvent.PRESS_DOWN: {
+                    String name = (String) eventReceived.get(ELE_NAME);
+                    if (!name.contains("COPY") && !name.equalsIgnoreCase(TRASH))
+                        mathElement.triggerDragShadowEvents(0f, 0f, eleActionPos.action
+                                , eleActionPos.hBias, eleActionPos.vBias, true);
+
                 }
                 break;
                 case MathElement.MathMotionEvent.MOVE_AROUND: {
+                    String name = (String) eventReceived.get(ELE_NAME);
 
-                    mathElement.actionRemoteMoveOptions();
-                    mathElement.positionMathEle(false, eleActionPos.hBias,
-                            eleActionPos.vBias);
+                    if (name.contains("COPY") || name.equalsIgnoreCase(TRASH)) {
+                        mathElement.rePositionMathEle((ConstraintLayout)
+                                mathElement.getEleImg().getParent(), eleActionPos.hBias,
+                                eleActionPos.vBias);
+                    } else {
+                        mathElement.triggerDragShadowEvents(0f, 0f, eleActionPos.action,
+                                eleActionPos.hBias, eleActionPos.vBias, true);
+                    }
                 }
                 break;
                 case MathElement.MathMotionEvent.LIFT_UP: {
                     if (mathElement.getName().contains("COPY")
                             || mathElement.getName().contains(TRASH)) {
-//                        mathElement.repositionElement();
-//                        mathElement.learnNeighbouringElements();
+                        mathElement.magPositionElement();
+                        mathElement.learnNeighbouringElements();
                     } else {
-                        mathElement.actionUpOptions(eventReceived, mathElement.getEleImg());
-                        mathElement.resetMathElePosition();
+                        mathElement.setEventReceived(eventReceived);
+                        mathElement.triggerDragShadowEvents(0f, 0f, eleActionPos.action,
+                                eleActionPos.hBias, eleActionPos.vBias, true);
                     }
+
+//                    mathElement.isRemoteExecution = false;
                 }
                 break;
                 case MathElement.MathMotionEvent.SINGLE_CLICK: {
@@ -191,7 +210,7 @@ public class DragAndDropMathApplication {
                 break;
                 case MathElement.MathMotionEvent.DOUBLE_CLICK: {
                     String name = mathElement.getName();
-                    if (name.equalsIgnoreCase(TRASH)){
+                    if (name.equalsIgnoreCase(TRASH)) {
                         mathElement.removeAllGeneratedElements();
                     }
                 }

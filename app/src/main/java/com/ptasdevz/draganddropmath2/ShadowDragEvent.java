@@ -6,12 +6,14 @@ class ShadowDragEvent {
     private Object data;
     private int action;
     private String name;
+    private boolean isRemoteEvent;
 
-    public ShadowDragEvent(float x, float y, Object data, int action) {
+    public ShadowDragEvent(float x, float y, Object data, int action, boolean isRemoteEvent) {
         this.x = x;
         this.y = y;
         this.data = data;
         this.action = action;
+        this.isRemoteEvent = isRemoteEvent;
     }
 
     public ShadowDragEvent(float x, float y, int action) {
@@ -21,6 +23,14 @@ class ShadowDragEvent {
     }
 
     public ShadowDragEvent() { }
+
+    public boolean isRemoteEvent() {
+        return isRemoteEvent;
+    }
+
+    public void setRemoteEvent(boolean remoteEvent) {
+        isRemoteEvent = remoteEvent;
+    }
 
     public int getAction() {
         return action;
@@ -71,4 +81,6 @@ class ShadowDragEvent {
     public void setName(String name) {
         this.name = name;
     }
+
+
 }
