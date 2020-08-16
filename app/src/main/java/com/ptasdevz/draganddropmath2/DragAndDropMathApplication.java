@@ -28,8 +28,8 @@ import static com.ptasdevz.draganddropmath2.MathElement.eventQueue;
 public class DragAndDropMathApplication {
 
     public static final String TAG = "ptasdevz";
-//    public static final String ENDPOINT_WEBSOCKET = "ws://192.168.137.1:8181/endpoint/websocket";
-    public static final String ENDPOINT_WEBSOCKET = "ws://35.239.154.165:8181/endpoint/websocket";
+    public static final String ENDPOINT_WEBSOCKET = "ws://192.168.100.4:8181/endpoint/websocket";
+//    public static final String ENDPOINT_WEBSOCKET = "ws://35.239.154.165:8181/endpoint/websocket";
     public static final String TOPIC_PATH = "/topic/math-element-message";
     public static StompClient mStompClient;
     public static String APPLICATION_ID;
